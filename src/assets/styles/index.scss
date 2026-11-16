@@ -1,0 +1,72 @@
+// 全局样式入口：重置 + 变量 + 通用布局工具类 + 移动端适配
+@use './reset.scss';
+
+// 品牌色与 Element Plus 主色对齐（组件库通过 CSS 变量换肤，无需编译期配置）
+:root {
+  --agri-primary: #2e7d58;
+  --agri-header-height: 56px;
+  --agri-sidebar-width: 232px;
+
+  --el-color-primary: #2e7d58;
+  --el-color-primary-light-3: #6da48a;
+  --el-color-primary-light-5: #96beab;
+  --el-color-primary-light-7: #c0d8cd;
+  --el-color-primary-light-8: #d5e5de;
+  --el-color-primary-light-9: #eaf2ef;
+  --el-color-primary-dark-2: #256446;
+}
+
+// 通用页面容器
+.page-container {
+  padding: 16px;
+  background-color: #f5f7fa;
+  min-height: 100%;
+}
+
+// 通用卡片
+.agri-card {
+  padding: 16px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(31, 45, 61, 0.08);
+}
+
+// 两列工具布局
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.text-secondary {
+  color: #8b95a1;
+}
+
+// 占位页正文的职责说明 / 后续说明文案
+.page-note {
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+// 移动端公共容器：PC 上居中，手机全宽
+.m-page {
+  padding: 12px;
+  min-height: calc(100vh - 56px);
+  background-color: #f5f7fa;
+}
+
+@media (min-width: 768px) {
+  .m-page {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+}
+
+// 窄屏隐藏（侧边栏等 PC 元素）
+@media (max-width: 992px) {
+  .hide-on-tablet {
+    display: none !important;
+  }
+}

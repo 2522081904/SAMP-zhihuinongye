@@ -121,6 +121,3 @@ agri-web/
 ## 构建产物
 
 `npm run build` 输出到 `dist/`，其中 `vendor` chunk 收纳 vue / vue-router / pinia，`element-plus` chunk 单独拆出，页面代码按路由懒加载分片，便于浏览器长期缓存。
-#   S A M P - z h i h u i n o n g y e  
- #   S A M P - z h i h u i n o n g y e  
- 
