@@ -1,0 +1,70 @@
+name: Deploy to GitHub Pages
+
+# 触发条件：推送到 main 后自动部署，也支持在 Actions 页面手动触发
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages 部署所需权限：读代码、写 Pages、用 OIDC 令牌向 Pages 服务证明身份
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个 Pages 部署；排队而不是取消，避免线上产物被中途掐断
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建静态产物
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci --no-audit --no-fund
+
+      # 项目站点挂在 /<repo>/ 下，构建时必须把基路径注入 Vite，
+      # 否则 index.html 里的 /assets/... 会指向域名根目录，页面全白
+      - name: 生产构建
+        run: npm run build
+        env:
+          VITE_BASE: /SAMP-zhihuinongye/
+
+      # enablement: true 让工作流自己把仓库的 Pages 打开（source 设为 GitHub Actions），
+      # 首次部署不需要手动去 Settings → Pages 点选
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: 发布到 GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4

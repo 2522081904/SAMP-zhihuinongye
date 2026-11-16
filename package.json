@@ -6,7 +6,7 @@
   "description": "智慧农业综合管理平台（V1）前端工程骨架",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/postbuild.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",

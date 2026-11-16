@@ -3,15 +3,17 @@
  * P001 登录页
  * 职责：账号密码登录入口，登录成功后写入 token 并跳转工作台。
  * 骨架阶段表单不校验、不发请求，调用 user store 的 mock 登录即可进入系统。
+ * 若由路由守卫拦下来（?redirect=/iot/env），登录成功后跳回原地址。
  */
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AgriPageHeader from '@/components/AgriPageHeader.vue'
 import { useUserStore } from '@/store/modules/user'
 
 defineOptions({ name: 'LoginPage' })
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
@@ -22,12 +24,24 @@ const form = reactive({
   captcha: ''
 })
 
+/**
+ * 解析登录后要跳回的目标地址。
+ * 只接受站内路径（以单个 / 开头），避免 redirect 参数被用来跳到外部站点。
+ * @returns {string} 站内路径，缺省为工作台
+ */
+function resolveRedirect() {
+  const redirect = route.query.redirect
+  const target = typeof redirect === 'string' ? redirect : ''
+  return target.startsWith('/') && !target.startsWith('//') ? target : '/iot/env'
+}
+
 async function handleLogin() {
   loading.value = true
   try {
     await userStore.login({ username: form.username, password: form.password })
     ElMessage.success('登录成功')
-    router.push('/iot/env')
+    // router 的编程式跳转会自动带上部署基路径（GitHub Pages 子路径场景）
+    router.replace(resolveRedirect())
   } finally {
     loading.value = false
   }
@@ -65,6 +79,7 @@ async function handleLogin() {
         >
           登录
         </el-button>
+        <p class="login-page__tip">演示环境：任意账号密码可登录，数据为本地模拟。</p>
       </el-form>
     </div>
   </div>
@@ -93,5 +108,14 @@ async function handleLogin() {
 
 .login-page__submit {
   width: 100%;
+}
+
+// 演示环境说明：明确这里是本地 mock 登录，不是真实服务端认证
+.login-page__tip {
+  margin-top: $space-md;
+  font-size: $font-size-xs;
+  line-height: 1.6;
+  color: $text-secondary;
+  text-align: center;
 }
 </style>

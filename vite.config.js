@@ -13,8 +13,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   // 代理目标：优先使用 .env 中的 VITE_PROXY_TARGET，缺省回落到本地后端占位地址
   const proxyTarget = env.VITE_PROXY_TARGET || 'http://127.0.0.1:8080'
+  // 部署基路径：GitHub Pages 项目站点挂在 /<repo>/ 下，构建时用 VITE_BASE 注入；
+  // 本地开发与 `npm run build` 不带该变量，回落到根路径 /
+  const base = process.env.VITE_BASE || '/'
 
   return {
+    base,
     plugins: [
       vue(),
       // 自动导入 vue / vue-router / pinia 的组合式 API，减少样板 import

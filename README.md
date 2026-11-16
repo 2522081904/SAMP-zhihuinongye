@@ -3,6 +3,27 @@
 Vite 6 + Vue 3 前端骨架工程，对应实训模块 2「项目架构设计与工程初始化」。
 本阶段完成工程规范、目录结构、33 个页面的路由与占位骨架，业务逻辑留待后续模块实现。
 
+## 在线预览
+
+| 项目       | 值                                                         |
+| ---------- | ---------------------------------------------------------- |
+| 线上地址   | <https://2522081904.github.io/SAMP-zhihuinongye/>          |
+| 仓库       | `2522081904/SAMP-zhihuinongye`（GitHub Pages 项目站点）    |
+| 部署基路径 | `/SAMP-zhihuinongye/`（由构建期环境变量 `VITE_BASE` 注入） |
+
+演示环境说明：
+
+- **登录是本地 mock**：任意账号密码均可进入，页面数据全部为前端模拟，没有真实后端参与。
+- **静态托管的登录仅为前端门槛，非服务端认证**：守卫只做路由层拦截，改动浏览器本地存储即可绕过，不能当作安全边界。
+- 未登录直接访问业务页（例如 `https://2522081904.github.io/SAMP-zhihuinongye/iot/env`）会被拦到登录页，登录成功后自动跳回原地址。
+- 消费者扫码页 `/trace/scan` 按需求允许匿名访问。
+
+部署相关说明：
+
+- GitHub Pages 项目站点挂在 `/SAMP-zhihuinongye/` 下，构建时用 `VITE_BASE=/SAMP-zhihuinongye/` 注入基路径；本地 `npm run dev` 与不带变量的 `npm run build` 仍以 `/` 为基路径。
+- `npm run build` 末尾会执行 `scripts/postbuild.mjs`：把 `dist/index.html` 复制为 `dist/404.html`（SPA 深链接刷新时由 Pages 回退到应用入口），并写出 `dist/.nojekyll`（关闭 Jekyll，避免下划线开头的资源目录被忽略）。
+- 部署流水线为 `.github/workflows/deploy.yml`：push 到 `main` 或手动触发，`actions/configure-pages@v5` 带 `enablement: true`，仓库尚未开启 Pages 时由工作流自动开启。
+
 ## 技术栈
 
 | 分类     | 选型                                                                          |

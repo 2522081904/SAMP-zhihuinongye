@@ -85,25 +85,46 @@ const routes = [
   }
 ]
 
+// 全局前置守卫：维护浏览器标题 → 登录态拦截 → 路由级权限拦截
+// 业务页（未登录）会被拦到 /login 并带上 redirect，登录成功后再跳回原地址；
+// 给敏感路由加 meta.perm（例如 meta: { perm: 'system:user:list' }）即自动生效。
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 })
 })
 
-// 全局前置守卫：维护浏览器标题 + 路由级权限拦截
-// 给敏感路由加 meta.perm（例如 meta: { perm: 'system:user:list' }）即自动生效；
-// 骨架阶段没有路由声明 meta.perm，因此默认全部放行。
+// 允许未登录访问的路径：登录页、403 无权页、消费者扫码页（按需求就该匿名可看）
+// 404 兜底路由是通配符，没法按路径列举，改用路由名判断
+const PUBLIC_PATHS = ['/login', '/403', '/trace/scan']
+
+/**
+ * 判断目标路由是否允许匿名访问。
+ * @param {import('vue-router').RouteLocationNormalized} to 目标路由
+ * @returns {boolean} true 表示无需登录
+ */
+function isPublicRoute(to) {
+  return PUBLIC_PATHS.includes(to.path) || to.name === 'NotFound'
+}
+
 router.beforeEach((to) => {
   const title = to.meta?.title
   document.title = title ? `${title} - 智慧农业综合管理平台` : '智慧农业综合管理平台'
 
+  const userStore = useUserStore()
+
+  // 第一关：登录态。已登录不必再停留在登录页；未登录访问业务页一律拦到登录页并记住来路
+  if (userStore.isLogin && to.path === '/login') {
+    return { path: '/iot/env' }
+  }
+  if (!userStore.isLogin && !isPublicRoute(to)) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  // 第二关：路由级权限。登录态通过后才判断，避免未登录用户被误导到 403
   const perm = to.meta?.perm
-  if (perm) {
-    const userStore = useUserStore()
-    if (!userStore.hasPerm(perm)) {
-      return { path: '/403', query: { from: to.fullPath } }
-    }
+  if (perm && !userStore.hasPerm(perm)) {
+    return { path: '/403', query: { from: to.fullPath } }
   }
   return true
 })
