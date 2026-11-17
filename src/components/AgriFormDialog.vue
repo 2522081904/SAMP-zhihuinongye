@@ -31,7 +31,7 @@ const props = defineProps({
   editData: { type: Object, default: () => ({}) }
 })
 
-const emit = defineEmits(['update:modelValue', 'submit', 'cancel', 'closed'])
+const emit = defineEmits(['update:modelValue', 'submit', 'cancel', 'closed', 'field-change'])
 
 const formRef = ref(null)
 const form = reactive({})
@@ -191,6 +191,7 @@ const mergedRules = computed(() => {
  */
 function setField(prop, value) {
   form[prop] = value
+  emit('field-change', { prop, value })
 }
 
 /**
@@ -260,7 +261,8 @@ function colSpan(field) {
 defineExpose({
   validate: () => formRef.value?.validate(),
   resetFields: resetForm,
-  getForm: () => deepClone(form)
+  getForm: () => deepClone(form),
+  setField
 })
 </script>
 

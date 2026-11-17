@@ -22,7 +22,7 @@ defineOptions({ name: 'DevicePatrolPage' })
 
 const router = useRouter()
 
-// 全量设备（当前规模 40 台，一次取全量在前端分组，避免多次分页请求）
+// 全量设备（当前规模 48 台，一次取全量在前端分组，避免多次分页请求）
 const devices = ref([])
 const loading = ref(false)
 const loadError = ref(false)

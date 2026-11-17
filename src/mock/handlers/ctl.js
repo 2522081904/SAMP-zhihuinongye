@@ -190,6 +190,7 @@ export function handleCtl(ctx) {
       level: String(body.level || 'MAJOR'),
       enabled: body.enabled !== false,
       priority: toInt(body.priority, 5),
+      remark: String(body.remark || ''),
       createdAt: nowText,
       updatedAt: nowText
     }
@@ -222,13 +223,23 @@ export function handleCtl(ctx) {
       'actionName',
       'level',
       'enabled',
-      'priority'
+      'priority',
+      'deviceType',
+      'remark'
     ]
     editable.forEach((key) => {
       if (body[key] !== undefined) {
         strategy[key] = body[key]
       }
     })
+    if (body.plotId !== undefined) {
+      const plot = findPlot(String(body.plotId))
+      if (!plot) {
+        return fail(40401, `地块 ${body.plotId} 不存在`)
+      }
+      strategy.plotId = plot.id
+      strategy.plotName = plot.name
+    }
     if (body.threshold !== undefined) {
       const threshold = Number(body.threshold)
       if (!Number.isFinite(threshold)) {

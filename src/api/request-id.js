@@ -11,8 +11,9 @@ export function createRequestId(prefix = 'REQ') {
 
 /**
  * 写请求的公共 headers。
+ * @param {string} [requestId] 复用已有幂等号（演示 40901 重复提交）
  * @returns {{headers: Object}} axios 请求配置片段
  */
-export function writeConfig() {
-  return { headers: { 'X-Request-Id': createRequestId() } }
+export function writeConfig(requestId) {
+  return { headers: { 'X-Request-Id': requestId || createRequestId() } }
 }

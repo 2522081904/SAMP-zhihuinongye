@@ -6,7 +6,8 @@ import request from '../request.js'
 import { writeConfig } from '../request-id.js'
 
 /** A04 下发控制指令（X-Request-Id 幂等，安全锁开启返回 42301） · P007/P009 */
-export const sendCommand = (payload) => request.post('/ctl/commands', payload, writeConfig())
+export const sendCommand = (payload, requestId) =>
+  request.post('/ctl/commands', payload, writeConfig(requestId))
 
 /** A05 指令执行回执（首次 PENDING，再次查询为 SUCCESS） · P007/P003 */
 export const fetchCommand = (requestId) => request.get(`/ctl/commands/${requestId}`)

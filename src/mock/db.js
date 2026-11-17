@@ -198,7 +198,9 @@ const DEVICE_TYPES = {
   WS: { name: '小型气象站', letter: 'W', category: 'SENSOR' },
   CAM: { name: '高清球机', letter: 'M', category: 'CAMERA' },
   VALVE: { name: '灌溉电磁阀', letter: 'V', category: 'ACTUATOR' },
-  FAN: { name: '环流风机', letter: 'F', category: 'ACTUATOR' }
+  FAN: { name: '环流风机', letter: 'F', category: 'ACTUATOR' },
+  LIGHT: { name: '补光灯', letter: 'G', category: 'ACTUATOR' },
+  CURTAIN: { name: '卷帘', letter: 'R', category: 'ACTUATOR' }
 }
 
 const CATEGORY_NAMES = {
@@ -228,7 +230,7 @@ const DEVICE_STATUS_NAMES = {
 const MANUFACTURERS = ['海康威视', '托普云农', '中科物联', '汉枫科技']
 
 /**
- * 设备台账：8 个地块 × 5 台 = 40 台。
+ * 设备台账：8 个地块 × 5 台 = 40 台，另为前 4 个温室地块补充补光灯与卷帘各 1 台，共 48 台。
  * 编码规则 `EQ-{地块号}{类型字母}-{四位序号}`，例如 EQ-1T-0001、EQ-5W-0021。
  * 状态按固定序号指定为少量离线/故障，其余在线，便于页面演示三种状态。
  */
@@ -268,6 +270,38 @@ plots.forEach((plot, plotIndex) => {
       installDate: formatDate(NOW_MS - (30 + deviceSequence * 3) * DAY_MS),
       signal: status === 'OFFLINE' ? 0 : (deviceSequence % 5) + 1,
       ip: `10.20.${plotIndex + 1}.${10 + typeIndex}`,
+      manufacturer: MANUFACTURERS[deviceSequence % MANUFACTURERS.length],
+      lastMaintainAt: formatDate(NOW_MS - ((deviceSequence % 20) + 3) * DAY_MS)
+    })
+  })
+})
+
+// 前 4 个温室地块补充补光灯与卷帘，保证 P007 四类执行器控制面板都有真实设备可演示
+const EXTRA_ACTUATOR_TYPES = ['LIGHT', 'CURTAIN']
+plots.slice(0, 4).forEach((plot, plotIndex) => {
+  EXTRA_ACTUATOR_TYPES.forEach((typeCode, typeIndex) => {
+    deviceSequence += 1
+    const type = DEVICE_TYPES[typeCode]
+    const code = `EQ-${plotIndex + 1}${type.letter}-${String(deviceSequence).padStart(4, '0')}`
+    devices.push({
+      id: deviceSequence,
+      code,
+      name: `${plot.shortName}${type.name}${String(PLOT_DEVICE_TYPES[plotIndex].length + typeIndex + 1).padStart(2, '0')}`,
+      type: typeCode,
+      typeName: type.name,
+      category: type.category,
+      categoryName: CATEGORY_NAMES[type.category],
+      status: 'ONLINE',
+      statusName: DEVICE_STATUS_NAMES.ONLINE,
+      online: true,
+      lastSeen: formatDateTime(NOW_MS - ((deviceSequence % 7) + 1) * MINUTE_MS),
+      plotId: plot.id,
+      plotName: plot.name,
+      crop: plot.crop,
+      firmware: `v2.${deviceSequence % 4}.${deviceSequence % 7}`,
+      installDate: formatDate(NOW_MS - (30 + deviceSequence * 3) * DAY_MS),
+      signal: (deviceSequence % 5) + 1,
+      ip: `10.20.${plotIndex + 1}.${20 + typeIndex}`,
       manufacturer: MANUFACTURERS[deviceSequence % MANUFACTURERS.length],
       lastMaintainAt: formatDate(NOW_MS - ((deviceSequence % 20) + 3) * DAY_MS)
     })
