@@ -36,12 +36,20 @@ function resolveRedirect() {
 }
 
 async function handleLogin() {
+  if (loading.value) {
+    return
+  }
   loading.value = true
   try {
     await userStore.login({ username: form.username, password: form.password })
+    // 登录成功后立刻补拉 A02 档案（姓名 / 角色 / 权限码），
+    // 否则顶栏只能显示兜底文案，按钮级权限也拿不到真实权限集合
+    await userStore.fetchProfile({ force: true })
     ElMessage.success('登录成功')
     // router 的编程式跳转会自动带上部署基路径（GitHub Pages 子路径场景）
     router.replace(resolveRedirect())
+  } catch {
+    // 失败提示由 request.js 拦截器统一弹出（如 40102 账号或密码错误），这里不重复提示
   } finally {
     loading.value = false
   }

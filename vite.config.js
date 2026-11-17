@@ -64,10 +64,29 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1200,
       rollupOptions: {
         output: {
-          // 把框架与组件库拆成独立 chunk，便于浏览器长期缓存
-          manualChunks: {
-            vendor: ['vue', 'vue-router', 'pinia'],
-            'element-plus': ['element-plus']
+          /**
+           * 分包策略（函数形式，不能用对象字面量）：
+           * echarts + zrender 体积大且被多个图表页复用，必须独立成 chunk，
+           * 否则 Rollup 会把它并进第一个引用它的页面 chunk（EnvMonitor 曾因此涨到 648 kB）。
+           * element-plus 与 vue 系框架同样按包拆分，便于浏览器长期缓存。
+           * @param {string} id 模块绝对路径
+           * @returns {string|undefined} chunk 名称，返回 undefined 交回 Rollup 默认策略
+           */
+          manualChunks(id) {
+            const normalized = id.replace(/\\/g, '/')
+            if (!normalized.includes('/node_modules/')) {
+              return undefined
+            }
+            if (/\/(echarts|zrender)\//.test(normalized)) {
+              return 'echarts'
+            }
+            if (/\/(element-plus|@element-plus)\//.test(normalized)) {
+              return 'element-plus'
+            }
+            if (/\/(vue|@vue|vue-router|pinia)\//.test(normalized)) {
+              return 'vendor'
+            }
+            return undefined
           }
         }
       }
