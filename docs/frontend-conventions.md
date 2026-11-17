@@ -120,12 +120,7 @@ await sendCommand({ deviceCode: 'EQ-1T-0001', action: 'ON' }, writeConfig())
 - 请求：`page` 从 **1** 开始，`size` 默认 **10**、上限 **100**；其余过滤条件平铺。
 - 响应：`data = { page, size, total, list }`，`total` 是**过滤后**总数；页码越界返回空 `list`，不报错。
 
-**当前坑（下一轮必须统一）：** `src/composables/usePagination.js` 与 `useTable.js` 仍在用 `pageNum/pageSize` 命名，直接把 query 传给接口会全部落到默认第 1 页。下一轮二选一：
-
-1. 改 composable：`query` 输出 `{ page, size }`，表格组件事件仍用 `page/pageSize`；
-2. 在 `useTable.loadData` 里做一次映射：`{ ...filters, page: pagination.page, size: pagination.pageSize }`。
-
-推荐方案 1，并在 `AgriTable` 里把分页字段统一成 `page/size/total`，避免两套命名长期共存。
+**已统一（本轮完成）：** `usePagination` 的内部字段与 `query` 均输出 `{ page, size }`，`useTable.loadData` 直接透传，`AgriTable` 的分页 props 为 `page/size/total/pageSizes`，全仓不再有 `pageNum/pageSize` 字段。新增页面直接用 composable 的 `pagination` 绑定表格即可。
 
 其他约定：
 
@@ -238,10 +233,10 @@ await sendCommand({ deviceCode: 'EQ-1T-0001', action: 'ON' }, writeConfig())
 
 ## 8. 本轮遗留与下一轮注意事项
 
-1. **分页命名不一致**：composables 用 `pageNum/pageSize`，接口用 `page/size`，必须先统一（见第 4 节）。
-2. **路由 pageId 与契约 pageId 不一致**：例如路由里 `/iot/devices` 标注 P005，契约中 P006 才是设备台账。下一轮做页面时以**契约**为准，路由 pageId 单独修，不要照抄 `AgriPageHeader` 的 page-id。
+1. ~~分页命名不一致~~（已在本轮统一为 `page/size`，见第 4 节）。
+2. **路由 pageId 与契约 pageId 不一致**：两套编号口径并存（契约 P006=设备台账，工程 P006=设备巡检）。**UI 一律使用工程 pageId**，契约引用与工程页的逐条映射见 `docs/page-map.md`，不要改路由 pageId。
 3. **A02 菜单按真实路由生成**：mock 的菜单 path 与现有 router 对齐；若改路由，需同步 `src/mock/db.js` 的 `menuGroups`。
-4. **详情页 40401**：`request.js` 会全局弹错，详情页应在 catch 里静默并展示空态，避免「弹窗 + 空白页」双重反馈。
+4. **详情页 40401**：`request.js` 已对 40401 不弹全局提示，并在 reject 的 Error 上附带 `code/requestId`；页面 catch 到 40401 时直接进空态即可。
 5. **图表数据形态**：A22 报表返回 `charts.trend/distribution/ranking`，其中 `trend` 是 `{ label, value }[]`，页面不要假设是 `[x, y]` 二元组。
 6. **写操作后的列表刷新**：mock 写接口会改内存，但页面需重新拉列表；不要乐观更新，否则与后端真实行为不一致。
 7. **时间比较**：mock 固定「现在」，倒计时/相对时间请用接口返回的 `timestamp` 或数据时间，避免演示时出现「未来时间」。

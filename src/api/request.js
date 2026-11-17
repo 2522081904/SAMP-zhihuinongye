@@ -3,7 +3,8 @@
  * - baseURL 取环境变量 VITE_API_BASE_URL
  * - 请求头自动携带 Authorization: Bearer <token>
  * - 响应按 { code, message, data, requestId, timestamp } 解包
- * - code !== 0 视为业务失败：ElMessage 提示并 reject
+ * - code !== 0 视为业务失败：ElMessage 提示并 reject（reject 的 Error 上带 code/requestId）
+ * - code === 40401（查询对象不存在）由页面自行进入空态，不弹全局提示
  * - code === 40101（登录态失效）：清 token 并跳转 /login
  */
 import axios from 'axios'
@@ -55,14 +56,22 @@ service.interceptors.response.use(
     if (body.code === 0) {
       return body.data
     }
+    const bizError = new Error(body.message || '请求处理失败')
+    // 业务错误码透传给页面，页面可据此区分 40401（静默空态）等场景
+    bizError.code = body.code
+    bizError.requestId = body.requestId
+
     if (body.code === 40101) {
       localStorage.removeItem(TOKEN_KEY)
       ElMessage.error('登录已失效，请重新登录')
       redirectToLogin()
-      return Promise.reject(new Error(body.message || '登录已失效'))
+      return Promise.reject(bizError)
     }
-    ElMessage.error(body.message || '请求处理失败')
-    return Promise.reject(new Error(body.message || '请求处理失败'))
+    // 40401：目标数据不存在，属正常空态，由页面自行处理，不弹全局错误
+    if (body.code !== 40401) {
+      ElMessage.error(bizError.message)
+    }
+    return Promise.reject(bizError)
   },
   (error) => {
     const status = error.response?.status

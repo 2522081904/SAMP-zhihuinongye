@@ -4,6 +4,10 @@
 // 品牌色与 Element Plus 主色对齐（组件库通过 CSS 变量换肤，无需编译期配置）
 :root {
   --agri-primary: #2e7d58;
+  --agri-text-primary: #{$text-primary};
+  --agri-text-secondary: #{$text-secondary};
+  --agri-border-color: #{$border-color};
+  --agri-bg-page: #{$bg-page};
   --agri-header-height: 56px;
   --agri-sidebar-width: 232px;
 
