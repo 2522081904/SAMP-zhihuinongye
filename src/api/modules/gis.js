@@ -1,24 +1,19 @@
 /**
- * GIS 地图接口（模块：GIS 一张图）
+ * GIS 地块接口封装（A10）
+ * 地块边界为经纬度坐标数组，保存时会重算面积。
  */
-import request from '@/api/request'
+import request from '../request.js'
+import { writeConfig } from '../request-id.js'
 
-/** 地块列表（含 GeoJSON 边界） */
-export function getPlotList(params) {
-  return request.get('/gis/plots', { params })
-}
+/** 扩展 地块列表（P014 地块管理 / P024 一张图列表） · P014/P024 */
+export const fetchPlots = (params) => request.get('/gis/plots', { params })
 
-/** 保存地块边界 */
-export function savePlot(data) {
-  return request.post('/gis/plots', data)
-}
+/** A10 地块边界查询 · P014/P024 */
+export const fetchPlotBoundary = (id) => request.get(`/gis/plots/${id}/boundary`)
 
-/** 空间统计（按作物、面积、产量聚合） */
-export function getSpatialStatistics(params) {
-  return request.get('/gis/statistics', { params })
-}
+/** A10 保存地块边界（body: { boundary: [[lng, lat], ...] }） · P014/P024 */
+export const updatePlotBoundary = (id, payload) =>
+  request.post(`/gis/plots/${id}/boundary`, payload, writeConfig())
 
-/** 图层配置列表 */
-export function getLayerList() {
-  return request.get('/gis/layers')
-}
+/** 扩展 空间统计（总面积、作物分布、设施/露地占比） · P024 */
+export const fetchGisStatistics = () => request.get('/gis/statistics')

@@ -1,20 +1,11 @@
 /**
- * 认证与账号接口（模块：认证中心）
- * 骨架阶段仅保留最小可用示例，后续按接口文档补充。
+ * 认证接口封装（A01 / A02）
+ * 页面只认这里的函数，不要直接拼 URL。
  */
-import request from '@/api/request'
+import request from '../request.js'
 
-/** 账号密码登录，返回 { token, user } */
-export function login(data) {
-  return request.post('/auth/login', data)
-}
+/** A01 账号登录 · P001 */
+export const login = (payload) => request.post('/auth/login', payload)
 
-/** 退出登录 */
-export function logout() {
-  return request.post('/auth/logout')
-}
-
-/** 获取当前登录用户信息与权限码 */
-export function getProfile() {
-  return request.get('/auth/profile')
-}
+/** A02 当前用户信息与菜单权限 · P002 */
+export const fetchCurrentUser = () => request.get('/auth/me')

@@ -1,44 +1,17 @@
 /**
- * 物联网设备与环境数据接口（模块：设备与环境监测）
+ * 物联网感知接口封装（A03 / A06 / A07）
+ * 页面只认这里的函数，不要直接拼 URL。
  */
-import request from '@/api/request'
+import request from '../request.js'
 
-/** 设备分页列表 */
-export function getDevicePage(params) {
-  return request.get('/iot/devices', { params })
-}
+/** A03 设备台账查询（分页 + 多条件过滤） · P003/P006 */
+export const fetchDevices = (params) => request.get('/iot/devices', { params })
 
-/** 设备详情 */
-export function getDeviceDetail(deviceId) {
-  return request.get(`/iot/devices/${deviceId}`)
-}
+/** A03 设备详情（含最近遥测、告警与指令） · P003/P006 */
+export const fetchDeviceDetail = (code) => request.get(`/iot/devices/${code}`)
 
-/** 实时环境数据（温湿度、光照、CO2、土壤墒情） */
-export function getEnvRealtime(params) {
-  return request.get('/iot/env/realtime', { params })
-}
+/** A06 实时环境数据（按地块返回设备当前指标） · P002/P003 */
+export const fetchRealtime = (params) => request.get('/iot/realtime', { params })
 
-/** 历史环境数据，用于趋势分析 */
-export function getEnvHistory(params) {
-  return request.get('/iot/env/history', { params })
-}
-
-/** 下发设备控制指令 */
-export function sendControlCommand(data) {
-  return request.post('/iot/control/command', data)
-}
-
-/** 控制日志分页列表 */
-export function getControlLogPage(params) {
-  return request.get('/iot/control/logs', { params })
-}
-
-/** 告警分页列表 */
-export function getAlertPage(params) {
-  return request.get('/iot/alerts', { params })
-}
-
-/** 告警处置 */
-export function handleAlert(alertId, data) {
-  return request.post(`/iot/alerts/${alertId}/handle`, data)
-}
+/** A07 历史时序数据（deviceCode/from/to/interval） · P003/P004 */
+export const fetchHistory = (params) => request.get('/iot/history', { params })
