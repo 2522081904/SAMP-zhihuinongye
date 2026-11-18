@@ -855,6 +855,22 @@ export const inspections = Array.from({ length: 12 }, (_, index) => {
   }
 })
 
+// 批次质检状态与检测结论对齐：A15 的 status 不得与 A18 的 conclusion 自相矛盾。
+// 有检测报告的批次按报告结论落定（合格→QUALIFIED、不合格→REJECTED）；
+// 没有检测报告的批次只能是「待检测 / 检测中」，不能凭空标成合格或不合格。
+{
+  const reportedBatchNos = new Set(inspections.map((item) => item.batchNo))
+  const conclusionByBatch = new Map(inspections.map((item) => [item.batchNo, item.conclusion]))
+  harvestBatches.forEach((batch, index) => {
+    if (reportedBatchNos.has(batch.batchNo)) {
+      batch.status = conclusionByBatch.get(batch.batchNo) === 'FAIL' ? 'REJECTED' : 'QUALIFIED'
+    } else if (batch.status === 'QUALIFIED' || batch.status === 'REJECTED') {
+      batch.status = index % 2 === 0 ? 'PENDING' : 'INSPECTING'
+    }
+    batch.statusName = HARVEST_STATUS_NAMES[batch.status]
+  })
+}
+
 const GOODS_CATEGORY_NAMES = {
   VEGETABLE: '蔬菜',
   FRUIT: '水果',
