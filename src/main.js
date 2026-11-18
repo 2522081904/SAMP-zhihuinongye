@@ -2,7 +2,7 @@
  * 应用入口
  * 职责：创建 Vue 应用，挂载 Pinia、Router、全局指令与全局样式。
  * Element Plus 组件与样式由 unplugin-vue-components 按需注入，入口不整包引入。
- * 开发环境下按 VITE_USE_MOCK 开关动态装载本地假数据层（生产构建不引入 mock 代码）。
+ * 按 VITE_USE_MOCK 开关动态装载本地假数据层；静态演示站生产构建同样启用 mock，不依赖真实后端。
  */
 import { createApp } from 'vue'
 

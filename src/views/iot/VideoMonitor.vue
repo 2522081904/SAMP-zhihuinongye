@@ -123,7 +123,7 @@ onMounted(refresh)
     <AgriPageHeader
       page-id="P013"
       title="视频监控"
-      description="按地块查看摄像头在线状态与画面占位，支持筛选、刷新与抓拍演示入口。"
+      description="按地块查看摄像头在线状态与画面接入情况，支持筛选、刷新与抓拍演示入口。"
     >
       <template #extra>
         <span class="video-monitor__summary text-secondary">
@@ -207,7 +207,7 @@ onMounted(refresh)
       <div class="video-monitor__dialog">
         <div class="video-monitor__dialog-player">
           <span class="video-monitor__play-icon video-monitor__play-icon--large" />
-          <span class="video-monitor__player-text">实时画面接入中（演示占位）</span>
+          <span class="video-monitor__player-text">实时画面接入中（演示环境）</span>
         </div>
         <el-descriptions v-if="activeCamera" :column="2" border>
           <el-descriptions-item label="设备编号">{{ activeCamera.code }}</el-descriptions-item>

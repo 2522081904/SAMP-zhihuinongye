@@ -2,7 +2,7 @@
 /**
  * P001 登录页
  * 职责：账号密码登录入口，登录成功后写入 token 并跳转工作台。
- * 骨架阶段表单不校验、不发请求，调用 user store 的 mock 登录即可进入系统。
+ * 演示环境表单不校验、不发请求，调用 user store 的 mock 登录即可进入系统。
  * 若由路由守卫拦下来（?redirect=/iot/env），登录成功后跳回原地址。
  */
 import { reactive, ref } from 'vue'
@@ -77,7 +77,7 @@ async function handleLogin() {
           />
         </el-form-item>
         <el-form-item label="验证码">
-          <el-input v-model="form.captcha" placeholder="骨架阶段不校验验证码" />
+          <el-input v-model="form.captcha" placeholder="演示环境不校验验证码" />
         </el-form-item>
         <el-button
           type="primary"

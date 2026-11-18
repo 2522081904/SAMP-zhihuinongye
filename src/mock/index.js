@@ -1,7 +1,7 @@
 /**
  * mock 层入口：按环境开关决定是否接管 axios。
  * 仅在 VITE_USE_MOCK=true 时把 axios 实例的 adapter 替换为本地 mock，
- * 生产构建（VITE_USE_MOCK=false）下该模块通过动态 import 被剔除，不会进入主包。
+ * 若构建时 VITE_USE_MOCK=false，该模块通过动态 import 不会进入主包。
  */
 import { mockAdapter } from './adapter.js'
 
