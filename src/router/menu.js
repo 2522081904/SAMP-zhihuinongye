@@ -16,14 +16,20 @@ const MODULE_ORDER = [
 ]
 
 /**
- * 按 meta.module 聚合 PC 菜单。
+ * 按 meta.module 聚合 PC 菜单，并按权限过滤。
  * @param {Array} pcRoutes PC 端子路由集合
- * @returns {Array<{title: string, items: Array}>} 分组菜单
+ * @param {(code: string) => boolean} [hasPerm] 权限判定函数；缺省时不过滤（保持向后兼容，
+ *   PermConfig 等需要全量菜单结构的场景可直接单参调用）
+ * @returns {Array<{title: string, items: Array}>} 分组菜单（无可见条目的分组已被丢弃）
  */
-export function buildMenuGroups(pcRoutes) {
+export function buildMenuGroups(pcRoutes, hasPerm) {
   const groups = []
   pcRoutes.forEach((route) => {
     if (route.meta?.menu === false) {
+      return
+    }
+    // 页面级权限过滤：无权限的页面不进菜单，避免点进去才 403
+    if (route.meta?.perm && hasPerm && !hasPerm(route.meta.perm)) {
       return
     }
     const moduleName = route.meta?.module || '未分组'
@@ -44,12 +50,14 @@ export function buildMenuGroups(pcRoutes) {
   groups.forEach((group) => {
     group.items.sort((a, b) => a.pageId.localeCompare(b.pageId))
   })
+  // 过滤后可能出现只有标题没有条目的空模块，整组丢弃
+  const visibleGroups = groups.filter((group) => group.items.length > 0)
   const rank = (title) => {
     const index = MODULE_ORDER.indexOf(title)
     return index === -1 ? MODULE_ORDER.length : index
   }
-  groups.sort((a, b) => rank(a.title) - rank(b.title))
-  return groups
+  visibleGroups.sort((a, b) => rank(a.title) - rank(b.title))
+  return visibleGroups
 }
 
 export { MODULE_ORDER }

@@ -6,19 +6,32 @@ export default [
     path: '/analysis/overview',
     name: 'AnalysisOverview',
     component: () => import('@/views/analysis/Overview.vue'),
-    meta: { title: '数据分析总览', pageId: 'P010', module: '数据中心与AI分析', icon: 'PieChart' }
+    meta: {
+      perm: 'analysis:overview:view',
+      title: '数据分析总览',
+      pageId: 'P010',
+      module: '数据中心与AI分析',
+      icon: 'PieChart'
+    }
   },
   {
     path: '/reports',
     name: 'AnalysisReports',
     component: () => import('@/views/analysis/Reports.vue'),
-    meta: { title: '报表中心', pageId: 'P011', module: '数据中心与AI分析', icon: 'Files' }
+    meta: {
+      perm: 'report:view',
+      title: '报表中心',
+      pageId: 'P011',
+      module: '数据中心与AI分析',
+      icon: 'Files'
+    }
   },
   {
     path: '/analysis/ai',
     name: 'AnalysisAiInsight',
     component: () => import('@/views/analysis/AiInsight.vue'),
     meta: {
+      perm: 'ai:view',
       title: '长势与病虫害识别',
       pageId: 'P012',
       module: '数据中心与AI分析',

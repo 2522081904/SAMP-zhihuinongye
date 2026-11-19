@@ -28,6 +28,7 @@ import AgriSearchBar from '@/components/AgriSearchBar.vue'
 import AgriStatCard from '@/components/AgriStatCard.vue'
 import AgriStatusTag from '@/components/AgriStatusTag.vue'
 import AgriTable from '@/components/AgriTable.vue'
+import { MENU_PERMISSION_CODES, MODULE_BUTTONS } from '@/constants/permissions.js'
 import { useUserStore } from '@/store/modules/user'
 
 defineOptions({ name: 'SystemUserListPage' })
@@ -46,82 +47,7 @@ const USER_STATUS_MAP = {
   DISABLED: { text: '停用', type: 'info' }
 }
 
-// 菜单路径 → 菜单级权限编码（A02 只返回菜单结构，编码为前端口径常量）
-const MENU_PERMISSION_CODES = {
-  '/iot/env': 'iot:env:view',
-  '/iot/history': 'iot:history:view',
-  '/iot/devices': 'iot:device:list',
-  '/iot/devices/detail': 'iot:device:detail',
-  '/iot/patrol': 'iot:patrol:view',
-  '/iot/video': 'iot:video:view',
-  '/iot/control': 'iot:control',
-  '/iot/strategy': 'iot:strategy:view',
-  '/iot/control/log': 'ctl:log:view',
-  '/analysis/overview': 'analysis:overview:view',
-  '/reports': 'report:view',
-  '/analysis/ai': 'ai:view',
-  '/gis/map': 'gis:map:view',
-  '/gis/stats': 'gis:stats:view',
-  '/farm/plans': 'farm:plan:view',
-  '/farm/tasks': 'farm:task:view',
-  '/farm/inputs': 'farm:input:view',
-  '/farm/inputs/ledger': 'farm:ledger:view',
-  '/farm/inputs/inventory': 'farm:inventory:view',
-  '/farm/harvest': 'farm:harvest:view',
-  '/trace/batches': 'trace:batch:view',
-  '/trace/edit': 'trace:edit',
-  '/trace/lab': 'trace:lab:view',
-  '/iot/alerts': 'alarm:view',
-  '/iot/alerts/handle': 'alarm:handle',
-  '/commerce/orders': 'trade:order:view',
-  '/commerce/products': 'trade:goods:view',
-  '/system/users': 'system:user:view',
-  '/system/perm': 'system:perm:view'
-}
-
-// 按钮级权限：A02 不返回按钮节点，这里按模块维护一份前端常量，P030 复用同一口径
-const MODULE_BUTTONS = {
-  物联网感知监测: [
-    { code: 'iot:device:edit', name: '设备编辑' },
-    { code: 'iot:device:export', name: '设备导出' },
-    { code: 'iot:video:control', name: '云台控制' }
-  ],
-  远程智能控制: [
-    { code: 'iot:control:execute', name: '指令下发' },
-    { code: 'iot:strategy:edit', name: '策略编辑' }
-  ],
-  数据中心与AI分析: [
-    { code: 'report:export', name: '报表导出' },
-    { code: 'ai:diagnose', name: '发起诊断' }
-  ],
-  GIS地理信息: [
-    { code: 'gis:plot:edit', name: '边界编辑' },
-    { code: 'gis:export', name: '图层导出' }
-  ],
-  生产农事管理: [
-    { code: 'farm:plan:create', name: '计划创建' },
-    { code: 'farm:record:write', name: '农事记录' },
-    { code: 'harvest:write', name: '采收登记' }
-  ],
-  质量安全溯源: [
-    { code: 'trace:write', name: '溯源编辑' },
-    { code: 'trace:code:generate', name: '溯源码生成' },
-    { code: 'inspection:write', name: '检测报告录入' }
-  ],
-  告警消息中心: [
-    { code: 'alarm:handle', name: '告警处置' },
-    { code: 'alarm:export', name: '告警导出' }
-  ],
-  产销对接与订单: [
-    { code: 'trade:order:create', name: '订单创建' },
-    { code: 'trade:order:ship', name: '订单发货' }
-  ],
-  系统后台管理: [
-    { code: 'system:user:create', name: '新增用户' },
-    { code: 'system:user:reset', name: '重置密码' },
-    { code: 'system:perm:save', name: '保存权限' }
-  ]
-}
+// 菜单级 / 按钮级权限码统一来自共享常量，避免与 P030、A02 handler 各自维护一份而漂移
 
 // 种子角色使用老口径权限码，勾选前先展开成权限树叶子编码，避免回显为空
 const LEGACY_PERM_ALIAS = {

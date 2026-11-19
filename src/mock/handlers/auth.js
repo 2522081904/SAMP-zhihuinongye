@@ -5,9 +5,41 @@
  */
 import { fail, isBlank, matchPath, ok } from '../utils.js'
 import { findRole, findUser, menuGroups, users } from '../db.js'
+import { MENU_PERMISSION_CODES } from '@/constants/permissions.js'
 
 // 登录令牌前缀：形如 mock-token-admin-1731xxxx，A02 及其他接口据此还原当前用户
 const TOKEN_PATTERN = /^mock-token-([A-Za-z0-9_]+)-\d+$/
+
+/**
+ * 判断用户是否拥有某个权限码（管理员 '*' 通配）。
+ * @param {Object} user 用户对象
+ * @param {string} code 权限码
+ * @returns {boolean} 是否放行
+ */
+function userHasPerm(user, code) {
+  const owned = user?.perms || []
+  return owned.includes('*') || owned.includes(code)
+}
+
+/**
+ * 按当前用户权限过滤菜单树，并丢弃过滤后没有条目的分组。
+ * 真实后端不会把越权菜单下发到前端，mock 在这里对齐该行为（前端过滤是双保险的第二道）。
+ * db.js 的 MENU_GROUPS 条目只有 { path, title, pageId }，没有 perm 字段，
+ * 所以用共享常量 MENU_PERMISSION_CODES 按 path 反查；查不到的条目按「无权限码」放行。
+ * @param {Object} user 当前用户
+ * @returns {Array<{title: string, items: Array}>} 过滤后的菜单分组
+ */
+function filterMenuGroups(user) {
+  return menuGroups
+    .map((group) => ({
+      ...group,
+      items: (group.items || []).filter((item) => {
+        const code = MENU_PERMISSION_CODES[item.path]
+        return !code || userHasPerm(user, code)
+      })
+    }))
+    .filter((group) => group.items.length > 0)
+}
 
 /**
  * 把内部用户对象转为对外返回的用户信息。
@@ -150,8 +182,8 @@ export function handleAuth(ctx) {
     }
     return ok({
       user: userPublic(user),
-      // 菜单树与前端路由分组保持一致；真实后端会按角色过滤，mock 直接返回全量
-      menus: menuGroups,
+      // 菜单树按当前角色权限过滤后下发：即使前端过滤失效，也不该把越权菜单送到浏览器
+      menus: filterMenuGroups(user),
       roles: [user.roleCode],
       permissions: [...(user.perms || [])]
     })

@@ -21,7 +21,11 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 const alertStore = useAlertStore()
 
-const menuGroups = buildMenuGroups(pcRoutes)
+// 菜单按当前角色权限过滤：不同角色可见页面不同，无权页面不出现在菜单里。
+// 必须用 computed —— profile 是异步拉取的，首次渲染时 permissions 还是空数组，
+// 普通 const 会把「空菜单」定格下来；computed 会在权限到位后自动重算。
+// hasPerm 内部读取的是 store 的 permissions，因此这里能正确收集到响应式依赖。
+const menuGroups = computed(() => buildMenuGroups(pcRoutes, userStore.hasPerm))
 const activeMenu = computed(() => route.path)
 
 // 面包屑：模块名 + 页面名

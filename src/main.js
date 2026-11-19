@@ -20,12 +20,15 @@ import '@/assets/styles/index.scss'
 
 const app = createApp(App)
 
-app.use(pinia)
-app.use(router)
 app.directive('perm', permission)
 
 /**
- * 启动应用：先按需安装 mock adapter，再挂载根组件，保证首屏请求也能命中假数据。
+ * 启动应用：先按需安装 mock adapter，再挂载 Pinia 与 Router，保证首屏请求也能命中假数据。
+ *
+ * 顺序在这里很关键：app.use(router) 会立刻触发首次导航，而路由守卫需要 await 一次 A02
+ * 补拉用户档案。若 mock 尚未接管 axios，这次请求会真的发到 VITE_API_BASE_URL，
+ * 拉档案失败后 hasPerm 全部为 false，表现为刷新任何业务页都跳 403。
+ * 因此 installMock 必须早于 app.use(router)。
  * @returns {Promise<void>} 启动完成
  */
 async function bootstrap() {
@@ -33,6 +36,8 @@ async function bootstrap() {
     const { installMock } = await import('@/mock/index.js')
     installMock(request)
   }
+  app.use(pinia)
+  app.use(router)
   app.mount('#app')
 }
 

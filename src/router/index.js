@@ -39,14 +39,29 @@ const mobileTabRoutes = mobileRoutes
   .filter((route) => route.path.startsWith('/m/'))
   .map((route) => ({ ...route, path: route.path.replace('/m/', '') }))
 
+/**
+ * 计算当前用户第一个有权访问的 PC 页面，作为登录后的落点。
+ * 不同角色可见页面不同，写死 /iot/env 会让无权该页的账号一登录就撞 403。
+ * @param {(code: string) => boolean} [hasPerm] 权限判定函数；缺省时不过滤（等价于全部可见）
+ * @returns {string} 首个有权限的 PC 页面路径；一个都没有时返回 /403
+ */
+export function firstAllowedPath(hasPerm) {
+  const found = pcRoutes.find((route) => !route.meta?.perm || !hasPerm || hasPerm(route.meta.perm))
+  return found?.path || '/403'
+}
+
 const routes = [
   // 登录页独立布局
   authRoutes[0],
   {
-    // PC 端布局路由
+    // PC 端布局路由。根路径落点按当前角色算，避免登录后一进门就撞 403。
+    // 首次进站（档案还没拉回来）回落到 /iot/env：4 个内置角色都有该页权限，不会触发拦截。
     path: '/',
     component: DefaultLayout,
-    redirect: '/iot/env',
+    redirect: () => {
+      const userStore = useUserStore()
+      return userStore.userInfo ? firstAllowedPath(userStore.hasPerm) : '/iot/env'
+    },
     children: pcRoutes
   },
   {
@@ -107,7 +122,8 @@ function isPublicRoute(to) {
   return PUBLIC_PATHS.includes(to.path) || to.name === 'NotFound'
 }
 
-router.beforeEach((to) => {
+// 守卫是 async 的：第二关需要先 await 一次 A02 补拉档案，再判权（见下方注释）
+router.beforeEach(async (to) => {
   const title = to.meta?.title
   document.title = title ? `${title} - 智慧农业综合管理平台` : '智慧农业综合管理平台'
 
@@ -115,7 +131,12 @@ router.beforeEach((to) => {
 
   // 第一关：登录态。已登录不必再停留在登录页；未登录访问业务页一律拦到登录页并记住来路
   if (userStore.isLogin && to.path === '/login') {
-    return { path: '/iot/env' }
+    // 落点按角色算，不能写死：ops01 等角色若无 /iot/env 权限会立刻被第二关拦到 403
+    if (!userStore.userInfo) {
+      await userStore.fetchProfile()
+    }
+    // 档案拉取失败（非 401，例如网络抖动）时退回 /iot/env，避免把已登录用户直接甩到 403
+    return { path: userStore.userInfo ? firstAllowedPath(userStore.hasPerm) : '/iot/env' }
   }
   if (!userStore.isLogin && !isPublicRoute(to)) {
     return { path: '/login', query: { redirect: to.fullPath } }
@@ -123,8 +144,17 @@ router.beforeEach((to) => {
 
   // 第二关：路由级权限。登录态通过后才判断，避免未登录用户被误导到 403
   const perm = to.meta?.perm
-  if (perm && !userStore.hasPerm(perm)) {
-    return { path: '/403', query: { from: to.fullPath } }
+  if (perm) {
+    // 刷新页面时 token 已同步恢复，但 profile 要走 A02 异步拉取，此刻 permissions 还是
+    // 空数组，直接判权必然失败（表现为刷新任何业务页都跳 403）。必须先补拉一次。
+    // 这里刻意不加 !profileLoading 之类的条件：fetchProfile 内部已有并发合流，
+    // 无条件 await 是安全的；反之若在「别人正在拉」时跳过等待，会拿空权限判权。
+    if (!userStore.userInfo) {
+      await userStore.fetchProfile()
+    }
+    if (!userStore.hasPerm(perm)) {
+      return { path: '/403', query: { from: to.fullPath } }
+    }
   }
   return true
 })

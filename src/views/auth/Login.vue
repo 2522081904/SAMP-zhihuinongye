@@ -13,6 +13,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AgriPageHeader from '@/components/AgriPageHeader.vue'
 import { roles, users } from '@/mock/db.js'
+import { firstAllowedPath } from '@/router'
 import { useUserStore } from '@/store/modules/user'
 
 defineOptions({ name: 'LoginPage' })
@@ -45,12 +46,17 @@ const form = reactive({
 /**
  * 解析登录后要跳回的目标地址。
  * 只接受站内路径（以单个 / 开头），避免 redirect 参数被用来跳到外部站点。
- * @returns {string} 站内路径，缺省为工作台
+ * 没有来路（直接打开登录页）时落到当前角色第一个有权访问的页面，
+ * 不能写死 /iot/env —— 该页并非所有角色都有权限，写死会让部分账号一登录就撞 403。
+ * @returns {string} 站内路径
  */
 function resolveRedirect() {
   const redirect = route.query.redirect
   const target = typeof redirect === 'string' ? redirect : ''
-  return target.startsWith('/') && !target.startsWith('//') ? target : '/iot/env'
+  if (target.startsWith('/') && !target.startsWith('//')) {
+    return target
+  }
+  return firstAllowedPath(userStore.hasPerm)
 }
 
 /**

@@ -1027,7 +1027,22 @@ export const roles = [
     code: 'OPS',
     name: '运维工程师',
     description: '设备台账、远程控制与控制日志',
-    perms: ['iot:view', 'iot:control', 'device:edit', 'ctl:log:view', 'alarm:view', 'alarm:handle'],
+    // 页面级 9 条（iot:env:view ... alarm:handle）决定可见菜单，
+    // 后三条是按钮级：设备编辑、指令下发、云台控制
+    perms: [
+      'iot:env:view',
+      'iot:device:list',
+      'iot:device:detail',
+      'iot:patrol:view',
+      'iot:video:view',
+      'iot:control',
+      'ctl:log:view',
+      'alarm:view',
+      'alarm:handle',
+      'iot:device:edit',
+      'iot:control:execute',
+      'iot:video:control'
+    ],
     dataScope: 'ALL',
     userCount: 2,
     createdAt: '2026-01-06 09:10:00'
@@ -1037,13 +1052,29 @@ export const roles = [
     code: 'FARMER',
     name: '基地农户',
     description: '农事执行、采收与溯源登记',
+    // 页面级 16 条决定可见菜单；后三条是按钮级：农事记录、采收登记、溯源编辑。
+    // 注意不含 farm:plan:view —— 农事计划管理（P015）只对管理员开放，
+    // 农户若持有该码会连页面一起可见，与角色矩阵冲突。
     perms: [
-      'iot:view',
-      'farm:plan:view',
+      'iot:env:view',
+      'iot:history:view',
+      'iot:device:detail',
+      'iot:control',
+      'alarm:view',
+      'analysis:overview:view',
+      'ai:view',
+      'gis:map:view',
+      'gis:stats:view',
+      'farm:task:view',
+      'farm:input:view',
+      'farm:inventory:view',
+      'farm:harvest:view',
+      'trace:batch:view',
+      'trace:edit',
+      'trace:lab:view',
       'farm:record:write',
       'harvest:write',
-      'trace:write',
-      'alarm:view'
+      'trace:write'
     ],
     dataScope: 'PLOT',
     userCount: 3,
@@ -1054,7 +1085,17 @@ export const roles = [
     code: 'SUPERVISOR',
     name: '质量监管员',
     description: '检测报告、投入品台账与溯源查看',
-    perms: ['trace:view', 'inspection:view', 'inspection:write', 'supply:pesticide:view'],
+    // 页面级 6 条决定可见菜单；后两条是按钮级：检测报告录入、溯源编辑
+    perms: [
+      'iot:env:view',
+      'iot:device:detail',
+      'alarm:view',
+      'farm:ledger:view',
+      'trace:edit',
+      'trace:lab:view',
+      'inspection:write',
+      'trace:write'
+    ],
     dataScope: 'ALL',
     userCount: 2,
     createdAt: '2026-01-06 09:30:00'
