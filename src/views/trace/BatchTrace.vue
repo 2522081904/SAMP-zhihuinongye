@@ -610,7 +610,7 @@ onMounted(loadAll)
       </el-col>
     </el-row>
     <p class="trace-batch__note text-secondary">
-      说明：A16 只返回单码累计扫码次数，暂无按月统计口径，「本月扫码次数」为固定演示值； 赋码状态按
+      说明：A16 只返回单码累计扫码次数，暂无按月统计口径，「本月扫码次数」为固定示例值； 赋码状态按
       5 kg/件 估算应赋码量，A15 / A16 暂无该字段。
     </p>
 
@@ -660,7 +660,7 @@ onMounted(loadAll)
       </AgriTable>
     </div>
 
-    <!-- 二维码面板：选中批次后展示生成入口、演示二维码与码列表 -->
+    <!-- 二维码面板：选中批次后展示生成入口、示例二维码与码列表 -->
     <div
       v-if="selectedRow"
       ref="panelRef"
@@ -696,7 +696,7 @@ onMounted(loadAll)
               class="trace-batch__qr"
               viewBox="-1 -1 27 27"
               role="img"
-              :aria-label="`溯源码 ${firstPanelCode} 的演示二维码`"
+              :aria-label="`溯源码 ${firstPanelCode} 的示例二维码`"
             >
               <rect x="-1" y="-1" width="27" height="27" fill="#ffffff" />
               <rect
@@ -776,7 +776,7 @@ onMounted(loadAll)
       </div>
     </div>
 
-    <!-- 扫码预览：演示消费者扫码后看到的码值信息 -->
+    <!-- 扫码预览：消费者扫码后看到的码值信息 -->
     <el-dialog v-model="previewVisible" title="扫码预览" width="420px">
       <div v-loading="previewLoading" class="trace-batch__preview">
         <template v-if="previewCode">
@@ -785,7 +785,7 @@ onMounted(loadAll)
               class="trace-batch__qr"
               viewBox="-1 -1 27 27"
               role="img"
-              :aria-label="`溯源码 ${previewCode} 的演示二维码`"
+              :aria-label="`溯源码 ${previewCode} 的示例二维码`"
             >
               <rect x="-1" y="-1" width="27" height="27" fill="#ffffff" />
               <rect

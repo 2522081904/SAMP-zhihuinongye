@@ -95,7 +95,8 @@ function handleCommand(command) {
     handleLogout()
   } else if (command === 'profile') {
     drawerOpen.value = false
-    router.push('/system/users')
+    // 自助页：每个角色都能看自己的资料，不再跳管理员专属的 /system/users
+    router.push('/profile')
   }
 }
 

@@ -1,6 +1,10 @@
 # 依赖与构建产物
 node_modules/
 dist/
+dist-t1/
+dist-t2/
+dist-t3/
+dist-t4/
 dist-ssr/
 
 # 本地环境变量（含密钥，不入库）
@@ -25,3 +29,4 @@ Thumbs.db
 # 构建缓存
 .vite/
 *.local
+dist-review/

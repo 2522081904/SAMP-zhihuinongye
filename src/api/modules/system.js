@@ -15,6 +15,10 @@ export const createUser = (payload) => request.post('/system/users', payload, wr
 export const updateUser = (id, payload) =>
   request.put(`/system/users/${id}`, payload, writeConfig())
 
+/** 扩展 重置用户密码为初始密码 Agri@2026（仅管理员） · P029 */
+export const resetUserPassword = (id) =>
+  request.post(`/system/users/${id}/reset-password`, {}, writeConfig())
+
 /** A25 角色列表 · P029/P030 */
 export const fetchRoles = (params) => request.get('/system/roles', { params })
 

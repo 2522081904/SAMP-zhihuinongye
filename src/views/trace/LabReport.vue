@@ -571,7 +571,7 @@ function buildReportText(row) {
   lines.push('-'.repeat(42))
   lines.push(`共检测 ${items.length} 项，合格 ${items.length - failed} 项，不合格 ${failed} 项。`)
   lines.push(`综合判定：${conclusionOf(row)}。`)
-  lines.push('说明：本文件由页面数据生成，仅用于演示，不具备检测机构签章效力。')
+  lines.push('说明：本文件由页面数据生成，仅供参考，不具备检测机构签章效力。')
   return lines.join('\r\n')
 }
 

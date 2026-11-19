@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "智慧农业综合管理平台（V1）前端工程骨架",
+  "description": "智慧农业综合管理平台——面向种植基地的环境监测、生产管理与质量溯源系统",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/postbuild.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
+    "smoke": "node scripts/mock-smoke.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

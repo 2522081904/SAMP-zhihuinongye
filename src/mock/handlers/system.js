@@ -1,8 +1,20 @@
 /**
  * 系统管理模块 mock handler（A25）
- * 负责用户与角色查询、新增用户、角色新增与修改。
+ * 负责用户与角色查询、新增用户、角色新增与修改、管理员重置用户密码。
+ *
+ * 注意：本模块会被 Node 直接 import（scripts/mock-smoke.mjs 依赖这一点），
+ * 因此导入路径必须是相对路径，不能用 Vite 别名 `@`。
  */
-import { findRole, findUser, NOW_MS, roles, users } from '../db.js'
+import {
+  findRole,
+  findUser,
+  NOW_MS,
+  roles,
+  seedPassword,
+  updatePasswordHash,
+  users
+} from '../db.js'
+import { buildPasswordHash } from '../password.js'
 import {
   fail,
   formatDateTime,
@@ -17,10 +29,11 @@ import { currentUser, requireAdmin, unauthorized, userPublic } from './auth.js'
 
 /**
  * 系统管理模块路由入口。
+ * 本函数是 async：管理员重置密码要 await PBKDF2 派生（Web Crypto 只有异步 API）。
  * @param {Object} ctx 请求上下文
- * @returns {Object|null} 响应信封；未匹配返回 null
+ * @returns {Promise<Object|null>} 响应信封；未匹配返回 null
  */
-export function handleSystem(ctx) {
+export async function handleSystem(ctx) {
   const { method, path, query } = ctx
 
   // A25 用户列表：GET /system/users
@@ -78,6 +91,8 @@ export function handleSystem(ctx) {
       roleName: role.name,
       perms: [...role.perms],
       plotIds: Array.isArray(body.plotIds) ? body.plotIds : [],
+      // 新建用户同样带初始密码哈希，否则该账号永远无法登录（登录已改为真实校验）
+      passwordHash: await buildPasswordHash(seedPassword()),
       status: String(body.status || 'ENABLED'),
       statusName: String(body.status || 'ENABLED') === 'ENABLED' ? '正常' : '停用',
       lastLoginAt: '',
@@ -86,6 +101,28 @@ export function handleSystem(ctx) {
     users.push(created)
     role.userCount += 1
     return ok(userPublic(created), '用户已创建')
+  }
+
+  // 扩展：管理员重置用户密码（重置为初始密码）
+  // 注意：/system/users/:id/reset-password 是 4 段路径，下面的 matchPath('/system/users/:id')
+  // 因段数严格相等（3 段 ≠ 4 段）不会误吞，两个分支互不影响。
+  const resetPath = matchPath(path, '/system/users/:id/reset-password')
+  if (method === 'POST' && resetPath) {
+    const user = currentUser(ctx)
+    if (!user) {
+      return unauthorized()
+    }
+    const denied = requireAdmin(user)
+    if (denied) {
+      return denied
+    }
+    const target = users.find((item) => String(item.id) === String(resetPath.id))
+    if (!target) {
+      return fail(40401, `用户 ${resetPath.id} 不存在`)
+    }
+    const initialPassword = seedPassword()
+    updatePasswordHash(target.username, await buildPasswordHash(initialPassword))
+    return ok(null, `密码已重置为 ${initialPassword}`)
   }
 
   // 扩展：修改用户（P029 编辑角色/停用账号）

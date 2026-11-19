@@ -67,6 +67,9 @@ export const useUserStore = defineStore('user', () => {
   /**
    * A01 / A02 返回的用户结构字段不完全一致（perms 与 permissions 并存），
    * 这里统一归一化成页面只认的一套字段。
+   * 「个人信息」页要用到联系方式与账号状态，因此一并保留 phone / email / status /
+   * statusName / createdAt；A02 的 userPublic() 已返回前四个，createdAt 可能为空，
+   * 页面按空值兜底，不在这里编造。
    * @param {Object|null} raw 接口返回的用户对象
    * @returns {Object|null} 归一化后的档案
    */
@@ -84,7 +87,12 @@ export const useUserStore = defineStore('user', () => {
       roleName: raw.roleName || '',
       permissions: Array.isArray(owned) ? owned : [],
       plotIds: Array.isArray(raw.plotIds) ? raw.plotIds : [],
-      lastLoginAt: raw.lastLoginAt || ''
+      lastLoginAt: raw.lastLoginAt || '',
+      phone: raw.phone || '',
+      email: raw.email || '',
+      status: raw.status || '',
+      statusName: raw.status === 'DISABLED' ? '已停用' : '正常',
+      createdAt: raw.createdAt || ''
     }
   }
 
@@ -144,6 +152,16 @@ export const useUserStore = defineStore('user', () => {
     return profileTask
   }
 
+  /**
+   * 强制重拉档案的语义别名（个人信息页刷新用）。
+   * 只是 fetchProfile({ force: true }) 的薄封装：并发合流仍由 fetchProfile 内部的
+   * profileTask 负责，这里不改动那段逻辑，避免出现两条并行的档案请求。
+   * @returns {Promise<Object|null>} 最新档案；未登录或失败时返回 null
+   */
+  function refreshProfile() {
+    return fetchProfile({ force: true })
+  }
+
   /** 退出登录：清令牌、清档案、清菜单，跳转由调用方负责 */
   function logout() {
     setToken('')
@@ -167,6 +185,7 @@ export const useUserStore = defineStore('user', () => {
     setToken,
     login,
     logout,
-    fetchProfile
+    fetchProfile,
+    refreshProfile
   }
 })

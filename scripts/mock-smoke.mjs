@@ -57,9 +57,9 @@ function assert(condition, message) {
  * @param {Object} options 请求描述
  * @returns {Object} 响应信封
  */
-function call(options) {
+async function call(options) {
   const { method = 'GET', path, params, body, token = TOKEN, headers = {} } = options
-  return handleMockRequest({
+  return await handleMockRequest({
     method,
     url: path,
     params,
@@ -164,10 +164,10 @@ resetRuntime()
 TOKEN = ''
 
 // ---------- A01 登录 ----------
-const loginEnvelope = call({
+const loginEnvelope = await call({
   method: 'POST',
   path: '/auth/login',
-  body: { username: 'admin', password: 'admin123' },
+  body: { username: 'admin', password: 'Agri@2026' },
   token: ''
 })
 record({ id: 'A01', method: 'POST', path: '/auth/login', envelope: loginEnvelope })
@@ -180,21 +180,24 @@ assert(
 )
 
 // ---------- A02 当前用户 ----------
-record({ id: 'A02', method: 'GET', path: '/auth/me', envelope: call({ path: '/auth/me' }) })
+record({ id: 'A02', method: 'GET', path: '/auth/me', envelope: await call({ path: '/auth/me' }) })
 
 // ---------- A03 设备台账 ----------
-const deviceList = call({ path: '/iot/devices', params: { page: 2, size: 5, status: 'ONLINE' } })
+const deviceList = await call({
+  path: '/iot/devices',
+  params: { page: 2, size: 5, status: 'ONLINE' }
+})
 record({ id: 'A03', method: 'GET', path: '/iot/devices?page=2&size=5', envelope: deviceList })
 assertPaged(deviceList, 'A03 设备列表', 2)
-const deviceDetail = call({ path: `/iot/devices/${devices[0].code}` })
+const deviceDetail = await call({ path: `/iot/devices/${devices[0].code}` })
 recordExtra('A03 设备详情', deviceDetail)
-recordExtra('A03 设备不存在 → 40401', call({ path: '/iot/devices/EQ-NOT-EXIST' }), 40401)
-recordExtra('A03 越界页码返回空列表', call({ path: '/iot/devices', params: { page: 999 } }))
-assertPaged(call({ path: '/iot/devices', params: { page: 999 } }), 'A03 越界页', 999)
+recordExtra('A03 设备不存在 → 40401', await call({ path: '/iot/devices/EQ-NOT-EXIST' }), 40401)
+recordExtra('A03 越界页码返回空列表', await call({ path: '/iot/devices', params: { page: 999 } }))
+assertPaged(await call({ path: '/iot/devices', params: { page: 999 } }), 'A03 越界页', 999)
 
 // ---------- A04 / A05 指令下发与回执 ----------
 const commandRequestId = createRequestId('REQ-SMOKE')
-const commandEnvelope = call({
+const commandEnvelope = await call({
   method: 'POST',
   path: '/ctl/commands',
   body: { deviceCode: devices.find((device) => device.category === 'ACTUATOR').code, action: 'ON' },
@@ -203,8 +206,8 @@ const commandEnvelope = call({
 record({ id: 'A04', method: 'POST', path: '/ctl/commands', envelope: commandEnvelope })
 assert(commandEnvelope.data?.status === 'PENDING', 'A04 首次下发状态应为 PENDING')
 
-const receiptFirst = call({ path: `/ctl/commands/${commandRequestId}` })
-const receiptSecond = call({ path: `/ctl/commands/${commandRequestId}` })
+const receiptFirst = await call({ path: `/ctl/commands/${commandRequestId}` })
+const receiptSecond = await call({ path: `/ctl/commands/${commandRequestId}` })
 assert(receiptFirst.data?.status === 'PENDING', 'A05 首次查询应为 PENDING')
 assert(receiptSecond.data?.status === 'SUCCESS', 'A05 第二次查询应变为 SUCCESS')
 record({
@@ -219,9 +222,9 @@ record({
   id: 'A06',
   method: 'GET',
   path: '/iot/realtime?plotId=PLOT-01',
-  envelope: call({ path: '/iot/realtime', params: { plotId: 'PLOT-01' } })
+  envelope: await call({ path: '/iot/realtime', params: { plotId: 'PLOT-01' } })
 })
-const history = call({
+const history = await call({
   path: '/iot/history',
   params: { deviceCode: devices[0].code, interval: 60 }
 })
@@ -238,9 +241,9 @@ record({
   id: 'A08',
   method: 'GET',
   path: '/ctl/strategies',
-  envelope: call({ path: '/ctl/strategies', params: { page: 1, size: 10 } })
+  envelope: await call({ path: '/ctl/strategies', params: { page: 1, size: 10 } })
 })
-const newStrategy = call({
+const newStrategy = await call({
   method: 'POST',
   path: '/ctl/strategies',
   body: {
@@ -257,7 +260,7 @@ const newStrategy = call({
 recordExtra('A08 新增策略', newStrategy)
 recordExtra(
   'A08 修改策略',
-  call({
+  await call({
     method: 'PUT',
     path: `/ctl/strategies/${newStrategy.data?.id}`,
     body: { threshold: 14 }
@@ -265,17 +268,17 @@ recordExtra(
 )
 
 // ---------- A09 控制日志 ----------
-const controlLogs = call({ path: '/ctl/logs', params: { page: 1, size: 10 } })
+const controlLogs = await call({ path: '/ctl/logs', params: { page: 1, size: 10 } })
 record({ id: 'A09', method: 'GET', path: '/ctl/logs', envelope: controlLogs })
 assertPaged(controlLogs, 'A09 控制日志')
 
 // ---------- A10 地块边界 ----------
-const boundary = call({ path: '/gis/plots/PLOT-01/boundary' })
+const boundary = await call({ path: '/gis/plots/PLOT-01/boundary' })
 record({ id: 'A10', method: 'GET', path: '/gis/plots/PLOT-01/boundary', envelope: boundary })
 assert((boundary.data?.boundary || []).length >= 3, 'A10 边界点不应少于 3 个')
 recordExtra(
   'A10 保存边界',
-  call({
+  await call({
     method: 'POST',
     path: '/gis/plots/PLOT-01/boundary',
     body: { boundary: boundary.data.boundary }
@@ -283,10 +286,10 @@ recordExtra(
 )
 
 // ---------- A11 农事计划 ----------
-const planList = call({ path: '/farm/plans', params: { page: 1, size: 10 } })
+const planList = await call({ path: '/farm/plans', params: { page: 1, size: 10 } })
 record({ id: 'A11', method: 'GET', path: '/farm/plans', envelope: planList })
 assertPaged(planList, 'A11 农事计划')
-const newPlan = call({
+const newPlan = await call({
   method: 'POST',
   path: '/farm/plans',
   body: {
@@ -297,7 +300,7 @@ const newPlan = call({
   }
 })
 recordExtra('A11 新建计划', newPlan)
-const dispatch = call({
+const dispatch = await call({
   method: 'POST',
   path: `/farm/plans/${newPlan.data?.id}/dispatch`,
   body: { workers: ['张桂芳', '刘志强'] }
@@ -306,7 +309,7 @@ recordExtra('A11 计划派单', dispatch)
 assert((dispatch.data?.tasks || []).length === 2, 'A11 派单应为每位工人生成一条工单')
 recordExtra(
   'A11 重复派单 → 40901',
-  call({ method: 'POST', path: `/farm/plans/${newPlan.data?.id}/dispatch`, body: {} }),
+  await call({ method: 'POST', path: `/farm/plans/${newPlan.data?.id}/dispatch`, body: {} }),
   40901
 )
 
@@ -316,7 +319,7 @@ record({
   id: 'A12',
   method: 'POST',
   path: '/farm/records',
-  envelope: call({
+  envelope: await call({
     method: 'POST',
     path: '/farm/records',
     body: {
@@ -329,20 +332,20 @@ record({
 })
 recordExtra(
   'A12 重复打卡 → 40901',
-  call({
+  await call({
     method: 'POST',
     path: '/farm/records',
     body: { taskId: pendingTask.id, content: '重复提交' }
   }),
   40901
 )
-recordExtra('A12 打卡记录列表', call({ path: '/farm/records', params: { page: 1 } }))
+recordExtra('A12 打卡记录列表', await call({ path: '/farm/records', params: { page: 1 } }))
 
 // ---------- A13 农资库存 ----------
-const stockList = call({ path: '/supply/stock', params: { page: 1, size: 10 } })
+const stockList = await call({ path: '/supply/stock', params: { page: 1, size: 10 } })
 record({ id: 'A13', method: 'GET', path: '/supply/stock', envelope: stockList })
 assertPaged(stockList, 'A13 库存')
-const stockChange = call({
+const stockChange = await call({
   method: 'POST',
   path: '/supply/stock',
   body: { itemId: 'AG-2026-001', type: 'IN', quantity: 5, remark: '自检入库' }
@@ -350,7 +353,7 @@ const stockChange = call({
 recordExtra('A13 入库', stockChange)
 recordExtra(
   'A13 出库超量 → 40901',
-  call({
+  await call({
     method: 'POST',
     path: '/supply/stock',
     body: { itemId: 'AG-2026-001', type: 'OUT', quantity: 99999 }
@@ -359,10 +362,10 @@ recordExtra(
 )
 
 // ---------- A14 农药台账 ----------
-const pesticideList = call({ path: '/supply/pesticide-logs', params: { page: 1, size: 10 } })
+const pesticideList = await call({ path: '/supply/pesticide-logs', params: { page: 1, size: 10 } })
 record({ id: 'A14', method: 'GET', path: '/supply/pesticide-logs', envelope: pesticideList })
 assertPaged(pesticideList, 'A14 农药台账')
-const newPesticide = call({
+const newPesticide = await call({
   method: 'POST',
   path: '/supply/pesticide-logs',
   body: {
@@ -379,10 +382,10 @@ recordExtra('A14 新增台账', newPesticide)
 assert(Boolean(newPesticide.data?.withdrawEndDate), 'A14 应自动计算安全间隔期截止日')
 
 // ---------- A15 采收批次 ----------
-const batchList = call({ path: '/harvest/batches', params: { page: 1, size: 10 } })
+const batchList = await call({ path: '/harvest/batches', params: { page: 1, size: 10 } })
 record({ id: 'A15', method: 'GET', path: '/harvest/batches', envelope: batchList })
 assertPaged(batchList, 'A15 采收批次')
-const newBatch = call({
+const newBatch = await call({
   method: 'POST',
   path: '/harvest/batches',
   body: {
@@ -396,7 +399,7 @@ const newBatch = call({
 recordExtra('A15 新建批次', newBatch)
 recordExtra(
   'A15 重复批次号 → 40901',
-  call({
+  await call({
     method: 'POST',
     path: '/harvest/batches',
     body: {
@@ -410,10 +413,10 @@ recordExtra(
 )
 
 // ---------- A16 溯源码 ----------
-const traceList = call({ path: '/trace/codes', params: { page: 1, size: 10 } })
+const traceList = await call({ path: '/trace/codes', params: { page: 1, size: 10 } })
 record({ id: 'A16', method: 'GET', path: '/trace/codes', envelope: traceList })
 assertPaged(traceList, 'A16 溯源码')
-const newCodes = call({
+const newCodes = await call({
   method: 'POST',
   path: '/trace/codes',
   body: { batchId: harvestBatches[0].id, count: 2 }
@@ -422,7 +425,7 @@ recordExtra('A16 生成溯源码', newCodes)
 assert((newCodes.data?.codes || []).length === 2, 'A16 应一次生成 2 个溯源码')
 
 // ---------- A17 公开溯源（无效令牌也必须通） ----------
-const publicTrace = call({
+const publicTrace = await call({
   path: `/trace/public/${traceCodes[0].code}`,
   token: 'invalid-token-for-public'
 })
@@ -435,15 +438,15 @@ record({
 assert((publicTrace.data?.timeline || []).length >= 3, 'A17 公开档案时间线应完整')
 recordExtra(
   'A17 溯源码不存在 → 40401',
-  call({ path: '/trace/public/TRC-2026-999999', token: '' }),
+  await call({ path: '/trace/public/TRC-2026-999999', token: '' }),
   40401
 )
 
 // ---------- A18 检测报告 ----------
-const inspectionList = call({ path: '/trace/inspections', params: { page: 1, size: 10 } })
+const inspectionList = await call({ path: '/trace/inspections', params: { page: 1, size: 10 } })
 record({ id: 'A18', method: 'GET', path: '/trace/inspections', envelope: inspectionList })
 assertPaged(inspectionList, 'A18 检测报告')
-const newInspection = call({
+const newInspection = await call({
   method: 'POST',
   path: '/trace/inspections',
   body: {
@@ -458,18 +461,18 @@ recordExtra('A18 新增检测报告', newInspection)
 assert(newInspection.data?.conclusion === 'PASS', 'A18 全部项目合格时结论应为 PASS')
 
 // ---------- A19 告警列表 ----------
-const alarmList = call({ path: '/alarms', params: { page: 1, size: 10, status: 'PENDING' } })
+const alarmList = await call({ path: '/alarms', params: { page: 1, size: 10, status: 'PENDING' } })
 record({ id: 'A19', method: 'GET', path: '/alarms?status=PENDING', envelope: alarmList })
 assertPaged(alarmList, 'A19 告警')
 const pendingAlarm = alarms.find((alarm) => alarm.status === 'PENDING')
-recordExtra('A19 告警详情', call({ path: `/alarms/${pendingAlarm.id}` }))
+recordExtra('A19 告警详情', await call({ path: `/alarms/${pendingAlarm.id}` }))
 
 // ---------- A20 告警处置 ----------
 record({
   id: 'A20',
   method: 'POST',
   path: `/alarms/${pendingAlarm.id}/handle`,
-  envelope: call({
+  envelope: await call({
     method: 'POST',
     path: `/alarms/${pendingAlarm.id}/handle`,
     body: { status: 'RESOLVED', remark: '已到现场处理并恢复通风' }
@@ -477,7 +480,7 @@ record({
 })
 recordExtra(
   'A20 重复处置 → 40901',
-  call({
+  await call({
     method: 'POST',
     path: `/alarms/${pendingAlarm.id}/handle`,
     body: { status: 'RESOLVED' }
@@ -490,9 +493,9 @@ record({
   id: 'A21',
   method: 'GET',
   path: '/ai/diagnosis',
-  envelope: call({ path: '/ai/diagnosis', params: { page: 1, size: 10 } })
+  envelope: await call({ path: '/ai/diagnosis', params: { page: 1, size: 10 } })
 })
-const diagnosis = call({
+const diagnosis = await call({
   method: 'POST',
   path: '/ai/diagnosis',
   body: { plotId: 'PLOT-04', diagnosisType: 'DISEASE' }
@@ -501,16 +504,16 @@ recordExtra('A21 发起诊断', diagnosis)
 assert(Boolean(diagnosis.data?.conclusion), 'A21 应返回诊断结论')
 
 // ---------- A22 报表 ----------
-const reportList = call({ path: '/reports', params: { page: 1, size: 10 } })
+const reportList = await call({ path: '/reports', params: { page: 1, size: 10 } })
 record({ id: 'A22', method: 'GET', path: '/reports', envelope: reportList })
 assertPaged(reportList, 'A22 报表')
-const newReport = call({
+const newReport = await call({
   method: 'POST',
   path: '/reports',
   body: { type: 'YIELD', name: '11 月产量自检报表', period: '2026-11' }
 })
 recordExtra('A22 生成报表', newReport)
-const reportDetail = call({ path: `/reports/${newReport.data?.id}` })
+const reportDetail = await call({ path: `/reports/${newReport.data?.id}` })
 recordExtra('A22 报表详情', reportDetail)
 assert(
   Boolean(reportDetail.data?.charts?.trend && reportDetail.data?.charts?.distribution),
@@ -519,10 +522,10 @@ assert(
 assert(Number.isFinite(reports[0]?.id), 'A22 报表种子数据缺失')
 
 // ---------- A23 订单 ----------
-const orderList = call({ path: '/trade/orders', params: { page: 1, size: 10 } })
+const orderList = await call({ path: '/trade/orders', params: { page: 1, size: 10 } })
 record({ id: 'A23', method: 'GET', path: '/trade/orders', envelope: orderList })
 assertPaged(orderList, 'A23 订单')
-const newOrder = call({
+const newOrder = await call({
   method: 'POST',
   path: '/trade/orders',
   body: { customerId: customers[0].id, items: [{ goodsId: goodsList[0].id, quantity: 2 }] }
@@ -531,26 +534,26 @@ recordExtra('A23 创建订单', newOrder)
 assert(newOrder.data?.totalAmount === goodsList[0].price * 2, 'A23 订单金额应按单价 × 数量汇总')
 recordExtra(
   'A23 订单收款',
-  call({ method: 'POST', path: `/trade/orders/${newOrder.data?.id}/pay`, body: {} })
+  await call({ method: 'POST', path: `/trade/orders/${newOrder.data?.id}/pay`, body: {} })
 )
 recordExtra(
   'A23 订单发货',
-  call({ method: 'POST', path: `/trade/orders/${newOrder.data?.id}/ship`, body: {} })
+  await call({ method: 'POST', path: `/trade/orders/${newOrder.data?.id}/ship`, body: {} })
 )
 recordExtra(
   'A23 未收款直接发货 → 40901',
-  call({ method: 'POST', path: `/trade/orders/${orders[0].id}/ship`, body: {} }),
+  await call({ method: 'POST', path: `/trade/orders/${orders[0].id}/ship`, body: {} }),
   40901
 )
 
 // ---------- A24 商品与客户 ----------
-const goodsListEnvelope = call({ path: '/trade/goods', params: { page: 1, size: 10 } })
+const goodsListEnvelope = await call({ path: '/trade/goods', params: { page: 1, size: 10 } })
 record({ id: 'A24', method: 'GET', path: '/trade/goods', envelope: goodsListEnvelope })
 assertPaged(goodsListEnvelope, 'A24 商品')
-recordExtra('A24 客户列表', call({ path: '/trade/customers', params: { page: 1 } }))
+recordExtra('A24 客户列表', await call({ path: '/trade/customers', params: { page: 1 } }))
 recordExtra(
   'A24 新增商品',
-  call({
+  await call({
     method: 'POST',
     path: '/trade/goods',
     body: { name: '水果黄瓜', price: 38, spec: '2.5kg/箱', stock: 80 }
@@ -558,7 +561,7 @@ recordExtra(
 )
 recordExtra(
   'A24 新增客户',
-  call({
+  await call({
     method: 'POST',
     path: '/trade/customers',
     body: { name: '苏州绿源生鲜超市', contact: '陈立', phone: '13905120088' }
@@ -566,7 +569,7 @@ recordExtra(
 )
 recordExtra(
   'A24 客户重名 → 40901',
-  call({
+  await call({
     method: 'POST',
     path: '/trade/customers',
     body: { name: customers[0].name, contact: '陈立', phone: '13905120088' }
@@ -575,13 +578,13 @@ recordExtra(
 )
 
 // ---------- A25 用户与角色 ----------
-const userList = call({ path: '/system/users', params: { page: 1, size: 10 } })
+const userList = await call({ path: '/system/users', params: { page: 1, size: 10 } })
 record({ id: 'A25', method: 'GET', path: '/system/users', envelope: userList })
 assertPaged(userList, 'A25 用户')
-const roleList = call({ path: '/system/roles', params: { page: 1, size: 10 } })
+const roleList = await call({ path: '/system/roles', params: { page: 1, size: 10 } })
 recordExtra('A25 角色列表', roleList)
 assertPaged(roleList, 'A25 角色')
-const newUser = call({
+const newUser = await call({
   method: 'POST',
   path: '/system/users',
   body: { username: 'farmer04', name: '赵春梅', roleCode: 'FARMER', phone: '13805120104' }
@@ -589,7 +592,7 @@ const newUser = call({
 recordExtra('A25 新增用户', newUser)
 recordExtra(
   'A25 账号重复 → 40901',
-  call({
+  await call({
     method: 'POST',
     path: '/system/users',
     body: { username: users[0].username, name: '重复账号', roleCode: 'FARMER' }
@@ -598,7 +601,7 @@ recordExtra(
 )
 recordExtra(
   'A25 修改角色返回更新后对象',
-  call({
+  await call({
     method: 'POST',
     path: '/system/roles',
     body: { id: roles[3].id, name: `${roles[3].name}（自检）`, perms: roles[3].perms }
@@ -607,16 +610,16 @@ recordExtra(
 assert(users.length >= 8, 'A25 用户种子数据应不少于 8 个')
 
 // ---------- A26 开放平台 ----------
-const appList = call({ path: '/open/apps', params: { page: 1, size: 10 } })
+const appList = await call({ path: '/open/apps', params: { page: 1, size: 10 } })
 record({ id: 'A26', method: 'GET', path: '/open/apps', envelope: appList })
 assertPaged(appList, 'A26 应用')
 const enabledApp = openApps.find((app) => app.status === 'ENABLED')
 const disabledApp = openApps.find((app) => app.status === 'DISABLED')
 recordExtra(
   'A26 创建应用',
-  call({ method: 'POST', path: '/open/apps', body: { appName: '自检第三方系统' } })
+  await call({ method: 'POST', path: '/open/apps', body: { appName: '自检第三方系统' } })
 )
-const openToken = call({
+const openToken = await call({
   method: 'POST',
   path: '/open/token',
   token: '',
@@ -626,7 +629,7 @@ recordExtra('A26 换取令牌', openToken)
 assert(Boolean(openToken.data?.accessToken), 'A26 应返回 accessToken')
 recordExtra(
   'A26 错误密钥 → 40102',
-  call({
+  await call({
     method: 'POST',
     path: '/open/token',
     token: '',
@@ -636,7 +639,7 @@ recordExtra(
 )
 recordExtra(
   'A26 已停用应用 → 42301',
-  call({
+  await call({
     method: 'POST',
     path: '/open/token',
     token: '',
@@ -647,67 +650,78 @@ recordExtra(
 
 // ---------- 错误场景复现 ----------
 console.log('\n【错误场景】')
+// 说明：call() 已改为 async，所有响应必须先 await 出来再放进对象字面量（可读性也更好）。
+const errorEnvelope40001 = await call({
+  method: 'POST',
+  path: '/auth/login',
+  body: { username: '', password: '' },
+  token: ''
+})
+const errorEnvelope40101 = await call({ path: '/auth/me', token: '' })
+
+// 40901 重复提交：同一个 X-Request-Id 连发两次，第二次应被请求号去重拦截
+const duplicateRequestId = createRequestId('REQ-DUP')
+const duplicateFirst = await call({
+  method: 'POST',
+  path: '/ctl/commands',
+  body: {
+    deviceCode: devices.find((device) => device.category === 'ACTUATOR').code,
+    action: 'OFF'
+  },
+  headers: { 'X-Request-Id': duplicateRequestId }
+})
+assert(duplicateFirst.code === 0, '40901 场景的前置下发应成功')
+const errorEnvelope40901 = await call({
+  method: 'POST',
+  path: '/ctl/commands',
+  body: {
+    deviceCode: devices.find((device) => device.category === 'ACTUATOR').code,
+    action: 'OFF'
+  },
+  headers: { 'X-Request-Id': duplicateRequestId }
+})
+
+// 42301 安全锁：开启安全锁后下发指令应被拦截，随后立刻复位避免影响其它用例
+setSafetyLock(true)
+const errorEnvelope42301 = await call({
+  method: 'POST',
+  path: '/ctl/commands',
+  body: {
+    deviceCode: devices.find((device) => device.category === 'ACTUATOR').code,
+    action: 'ON'
+  },
+  headers: { 'X-Request-Id': createRequestId('REQ-LOCK') }
+})
+setSafetyLock(false)
+
 const errorCases = [
+  { label: '40001 参数校验失败', expected: 40001, envelope: errorEnvelope40001 },
+  { label: '40101 未登录', expected: 40101, envelope: errorEnvelope40101 },
+  { label: '40901 重复提交', expected: 40901, envelope: errorEnvelope40901 },
+  { label: '42301 安全锁开启', expected: 42301, envelope: errorEnvelope42301 },
+  // 密码相关错误场景（TASK-1）：错误密码 / 未知账号都必须返回同一个 40102，不能泄漏账号是否存在
   {
-    label: '40001 参数校验失败',
-    expected: 40001,
-    envelope: call({
+    label: '40102 密码错误',
+    expected: 40102,
+    envelope: await call({
       method: 'POST',
       path: '/auth/login',
-      body: { username: '', password: '' },
+      body: { username: 'admin', password: 'Wrong@2026' },
       token: ''
     })
   },
   {
-    label: '40101 未登录',
-    expected: 40101,
-    envelope: call({ path: '/auth/me', token: '' })
-  },
-  {
-    label: '40901 重复提交',
-    expected: 40901,
-    envelope: (() => {
-      const duplicateId = createRequestId('REQ-DUP')
-      const first = call({
-        method: 'POST',
-        path: '/ctl/commands',
-        body: {
-          deviceCode: devices.find((device) => device.category === 'ACTUATOR').code,
-          action: 'OFF'
-        },
-        headers: { 'X-Request-Id': duplicateId }
-      })
-      assert(first.code === 0, '40901 场景的前置下发应成功')
-      return call({
-        method: 'POST',
-        path: '/ctl/commands',
-        body: {
-          deviceCode: devices.find((device) => device.category === 'ACTUATOR').code,
-          action: 'OFF'
-        },
-        headers: { 'X-Request-Id': duplicateId }
-      })
-    })()
-  },
-  {
-    label: '42301 安全锁开启',
-    expected: 42301,
-    envelope: (() => {
-      setSafetyLock(true)
-      const envelope = call({
-        method: 'POST',
-        path: '/ctl/commands',
-        body: {
-          deviceCode: devices.find((device) => device.category === 'ACTUATOR').code,
-          action: 'ON'
-        },
-        headers: { 'X-Request-Id': createRequestId('REQ-LOCK') }
-      })
-      setSafetyLock(false)
-      return envelope
-    })()
+    label: '40102 未知账号',
+    expected: 40102,
+    envelope: await call({
+      method: 'POST',
+      path: '/auth/login',
+      body: { username: 'ghost-user', password: 'Agri@2026' },
+      token: ''
+    })
   }
 ]
+
 errorCases.forEach((item) => {
   const passed = item.envelope.code === item.expected
   if (!passed) {
@@ -737,7 +751,9 @@ printTable(
 )
 
 if (failureCount === 0) {
-  console.log(`\n全部通过：26 条主路径 + ${extras.length} 项补充校验 + 4 类错误场景`)
+  console.log(
+    `\n全部通过：26 条主路径 + ${extras.length} 项补充校验 + ${errorCases.length} 类错误场景`
+  )
   process.exitCode = 0
 } else {
   console.error(`\n自检失败：${failureCount} 项未通过`)

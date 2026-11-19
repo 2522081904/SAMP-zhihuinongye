@@ -1,11 +1,15 @@
 /**
- * 认证模块 mock handler（A01 / A02）
+ * 认证模块 mock handler（A01 / A02 / A27）
  * 入参 ctx 为归一化后的请求上下文：{ method, path, query, body, headers }，
  * 由 src/mock/index.js 从 axios config 转换而来；返回统一响应信封或 null（未匹配）。
+ *
+ * 注意：本模块会被 Node 直接 import（scripts/mock-smoke.mjs 依赖这一点），
+ * 因此导入路径必须是相对路径，不能用 Vite 别名 `@`。
  */
 import { fail, isBlank, matchPath, ok } from '../utils.js'
-import { findRole, findUser, menuGroups, users } from '../db.js'
-import { MENU_PERMISSION_CODES } from '@/constants/permissions.js'
+import { findUser, menuGroups, updatePasswordHash } from '../db.js'
+import { buildPasswordHash, validatePasswordStrength, verifyPassword } from '../password.js'
+import { MENU_PERMISSION_CODES } from '../../constants/permissions.js'
 
 // 登录令牌前缀：形如 mock-token-admin-1731xxxx，A02 及其他接口据此还原当前用户
 const TOKEN_PATTERN = /^mock-token-([A-Za-z0-9_]+)-\d+$/
@@ -62,7 +66,8 @@ export function userPublic(user) {
     permissions: [...(user.perms || [])],
     plotIds: [...(user.plotIds || [])],
     status: user.status,
-    lastLoginAt: user.lastLoginAt || ''
+    lastLoginAt: user.lastLoginAt || '',
+    createdAt: user.createdAt || ''
   }
 }
 
@@ -125,10 +130,11 @@ function isDisabled(user) {
 
 /**
  * 认证模块路由入口。
+ * 本函数是 async：登录与改密都要走 PBKDF2 校验（Web Crypto 只有异步 API）。
  * @param {Object} ctx 请求上下文
- * @returns {Object|null} 响应信封；未匹配返回 null
+ * @returns {Promise<Object|null>} 响应信封；未匹配返回 null
  */
-export function handleAuth(ctx) {
+export async function handleAuth(ctx) {
   const { method, path } = ctx
 
   // A01 账号登录：POST /auth/login
@@ -139,28 +145,18 @@ export function handleAuth(ctx) {
     if (isBlank(username) || isBlank(password)) {
       return fail(40001, '账号和密码不能为空')
     }
-    // 固定组合用于演示「账号或密码错误」，便于联调时复现 40102
-    if (password === 'wrong') {
+    // 校验顺序固定：找不到账号 → 已停用 → 密码错误。
+    // 账号不存在与密码错误共用 40102 / 同一文案，避免通过错误码枚举出哪些账号真实存在。
+    const loginUser = findUser(username)
+    if (!loginUser) {
       return fail(40102, '账号或密码错误')
     }
-    const matchedUser = findUser(username)
-    // 任意非空账号都可以登录：未知账号按「基地农户」角色临时签发，仅用于演示
-    const fallbackRole = findRole('FARMER')
-    const loginUser = matchedUser ||
-      users.find(() => false) || {
-        id: users.length + 1,
-        username,
-        name: username,
-        phone: '',
-        roleCode: fallbackRole?.code || 'FARMER',
-        roleName: fallbackRole?.name || '基地农户',
-        perms: [...(fallbackRole?.perms || [])],
-        plotIds: [],
-        status: 'ENABLED',
-        lastLoginAt: ''
-      }
     if (isDisabled(loginUser)) {
       return fail(42301, '账号已被锁定，请联系管理员')
+    }
+    const passwordMatched = await verifyPassword(password, loginUser.passwordHash)
+    if (!passwordMatched) {
+      return fail(40102, '账号或密码错误')
     }
     const token = `mock-token-${loginUser.username}-${Date.now()}`
     return ok(
@@ -172,6 +168,35 @@ export function handleAuth(ctx) {
       },
       '登录成功'
     )
+  }
+
+  // A27 修改密码（自助，需登录）：PUT /auth/password
+  if (method === 'PUT' && matchPath(path, '/auth/password')) {
+    const user = currentUser(ctx)
+    if (!user) {
+      return unauthorized()
+    }
+    const body = ctx.body || {}
+    const oldPassword = String(body.oldPassword ?? '')
+    const newPassword = String(body.newPassword ?? '')
+    if (isBlank(oldPassword) || isBlank(newPassword)) {
+      return fail(40001, '原密码和新密码不能为空')
+    }
+    // 顺序按规格固定：空值 → 新密码强度 → 原密码错误 → 新旧相同
+    const strength = validatePasswordStrength(newPassword)
+    if (!strength.ok) {
+      return fail(40002, strength.message)
+    }
+    const oldMatched = await verifyPassword(oldPassword, user.passwordHash)
+    if (!oldMatched) {
+      return fail(40102, '原密码不正确')
+    }
+    if (oldPassword === newPassword) {
+      return fail(40002, '新密码不能与原密码相同')
+    }
+    const nextHash = await buildPasswordHash(newPassword)
+    updatePasswordHash(user.username, nextHash)
+    return ok(null, '密码已修改')
   }
 
   // A02 当前用户信息与菜单权限：GET /auth/me

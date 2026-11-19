@@ -13,7 +13,15 @@ export default [
   },
   {
     name: 'app/files-to-ignore',
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/*.min.js']
+    ignores: [
+      '**/dist/**',
+      '**/dist-t*/**',
+      '**/dist-review/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/_check/**',
+      '**/*.min.js'
+    ]
   },
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],

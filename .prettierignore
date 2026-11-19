@@ -1,4 +1,7 @@
 node_modules
 dist
+dist-t*
+dist-review
 package-lock.json
 public
+_check

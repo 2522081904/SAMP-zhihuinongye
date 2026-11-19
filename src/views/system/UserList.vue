@@ -708,7 +708,7 @@ onMounted(loadAll)
     </el-row>
     <p class="user-list__note text-secondary">
       说明：A25
-      用户接口不返回创建时间，「本月新增」按本机新增记录统计；「消费者」为前端内置演示角色，不参与账号分配。
+      用户接口不返回创建时间，「本月新增」按本机新增记录统计；「消费者」为内置角色，不参与账号分配。
     </p>
 
     <el-tabs v-model="activeTab" class="user-list__tabs">

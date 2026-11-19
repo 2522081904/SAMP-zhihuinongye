@@ -5,14 +5,12 @@
  * 验证码由前端生成并在提交前校验：4 位字母数字、排除易混淆字符，
  * 校验不通过就不发起登录请求；开发构建下把当前验证码挂到 window.__agriCaptcha，
  * 供自动化测试读取（生产构建该分支会被 tree-shake 掉，不残留任何旁路）。
- * 表单下方提供演示账号面板，账号 / 角色直接来自 mock 种子，避免手抄常量造成数据不一致。
  * 若由路由守卫拦下来（?redirect=/iot/env），登录成功后跳回原地址。
  */
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AgriPageHeader from '@/components/AgriPageHeader.vue'
-import { roles, users } from '@/mock/db.js'
 import { firstAllowedPath } from '@/router'
 import { useUserStore } from '@/store/modules/user'
 
@@ -24,8 +22,6 @@ const CAPTCHA_LENGTH = 4
 // canvas 逻辑尺寸（CSS 像素）：高度贴合表单行高，宽度保证卡片内一行放得下
 const CAPTCHA_WIDTH = 100
 const CAPTCHA_HEIGHT = 38
-// 演示账号统一密码：mock 登录只要求非空，固定成 admin123 便于一键填入
-const DEMO_PASSWORD = 'admin123'
 // 字符与干扰线共用的深色系调色板：与农业绿主色协调，且在浅色底上足够清晰
 const CAPTCHA_COLORS = ['#2f6b3a', '#1f5f8b', '#8a4b12', '#6b3fa0', '#0f6b5c', '#7a2f2f']
 
@@ -190,13 +186,23 @@ async function handleLogin() {
   if (loading.value) {
     return
   }
+  // 账号密码都为空时 store 会静默返回 false，这里必须自己先拦，
+  // 否则会继续走到「登录成功」分支，出现「提示成功但没登录」的假象
+  if (!String(form.username || '').trim() || !String(form.password || '')) {
+    ElMessage.warning('请输入账号和密码')
+    return
+  }
   // 验证码不通过时直接返回，不发起登录请求
   if (!checkCaptcha()) {
     return
   }
   loading.value = true
   try {
-    await userStore.login({ username: form.username, password: form.password })
+    const loggedIn = await userStore.login({ username: form.username, password: form.password })
+    if (!loggedIn) {
+      // store 在校验不通过时返回 false 且不抛错，这里不能当成成功
+      return
+    }
     // 登录成功后立刻补拉 A02 档案（姓名 / 角色 / 权限码），
     // 否则顶栏只能显示兜底文案，按钮级权限也拿不到真实权限集合
     await userStore.fetchProfile({ force: true })
@@ -210,29 +216,6 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
-}
-
-// 演示账号按角色分组：人数由种子数组长度推导，不写死 2/2/3/2
-const demoGroups = computed(() =>
-  roles
-    .map((role) => ({
-      code: role.code,
-      name: role.name,
-      members: users.filter((item) => item.roleCode === role.code)
-    }))
-    .filter((group) => group.members.length > 0)
-)
-const demoUserCount = computed(() => users.length)
-
-/**
- * 点击演示账号行：一键填入账号与统一密码，验证码仍需按图输入。
- * @param {Object} member mock 种子用户
- */
-function fillDemoAccount(member) {
-  form.username = member.username
-  form.password = DEMO_PASSWORD
-  form.captcha = ''
-  ElMessage.success(`已填入 ${member.name} 的账号`)
 }
 
 onMounted(() => {
@@ -300,45 +283,8 @@ onBeforeUnmount(() => {
         >
           登录
         </el-button>
-        <p class="login-page__tip">
-          验证码不区分大小写，点击图片或「换一张」可刷新；演示账号见下方，点击可一键填入。
-        </p>
+        <p class="login-page__tip">验证码不区分大小写，点击图片或「换一张」可刷新。</p>
       </el-form>
-
-      <el-collapse class="login-page__demo">
-        <el-collapse-item name="demo">
-          <template #title>
-            <span class="login-page__demo-title">
-              演示账号（{{ demoUserCount }} 个，点击可一键填入）
-            </span>
-          </template>
-          <div v-for="group in demoGroups" :key="group.code" class="login-page__demo-group">
-            <p class="login-page__demo-group-name">
-              {{ group.name }}（{{ group.members.length }}）
-            </p>
-            <button
-              v-for="member in group.members"
-              :key="member.username"
-              type="button"
-              class="login-page__demo-user"
-              @click="fillDemoAccount(member)"
-            >
-              <span class="login-page__demo-account">{{ member.username }}</span>
-              <span class="login-page__demo-name">{{ member.name }}</span>
-              <span class="login-page__demo-role">
-                {{ member.roleName }}
-                <span v-if="member.status === 'DISABLED'" class="login-page__demo-disabled">
-                  已停用
-                </span>
-              </span>
-            </button>
-          </div>
-          <p class="login-page__demo-note">
-            密码统一为 admin123；任意非空密码均可登录，密码填 wrong
-            可演示登录失败；标记「已停用」的账号登录会提示账号锁定。
-          </p>
-        </el-collapse-item>
-      </el-collapse>
     </div>
   </div>
 </template>
@@ -392,99 +338,12 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-// 演示环境说明：明确这里是本地 mock 登录，不是真实服务端认证
+// 表单下方补充说明
 .login-page__tip {
   margin-top: $space-md;
   font-size: $font-size-xs;
   line-height: 1.6;
   color: $text-secondary;
   text-align: center;
-}
-
-// 演示账号面板：与登录卡片同色系，默认收起
-.login-page__demo {
-  margin-top: $space-md;
-  border-top: 1px solid $border-color;
-  border-bottom: 0;
-
-  :deep(.el-collapse-item__header) {
-    height: auto;
-    padding: $space-sm 0;
-    font-size: $font-size-sm;
-    color: $text-regular;
-    border-bottom: 0;
-  }
-
-  :deep(.el-collapse-item__wrap) {
-    border-bottom: 0;
-  }
-
-  :deep(.el-collapse-item__content) {
-    padding-bottom: $space-sm;
-  }
-}
-
-.login-page__demo-title {
-  font-size: $font-size-sm;
-  color: $text-regular;
-}
-
-.login-page__demo-group {
-  margin-bottom: $space-sm;
-}
-
-.login-page__demo-group-name {
-  margin: 0 0 $space-xs;
-  font-size: $font-size-xs;
-  font-weight: 600;
-  color: $text-secondary;
-}
-
-// 一行一个账号：账号 / 姓名 / 角色三列对齐，整行可点击
-.login-page__demo-user {
-  display: grid;
-  grid-template-columns: 86px 1fr auto;
-  align-items: center;
-  gap: $space-sm;
-  width: 100%;
-  padding: $space-xs $space-sm;
-  font-family: inherit;
-  font-size: $font-size-xs;
-  color: $text-regular;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-radius: $radius-sm;
-  cursor: pointer;
-
-  &:hover {
-    background-color: $primary-lighter;
-  }
-}
-
-.login-page__demo-account {
-  font-family: Consolas, 'Courier New', monospace;
-  color: $primary-color;
-}
-
-.login-page__demo-name {
-  color: $text-primary;
-}
-
-.login-page__demo-role {
-  color: $text-secondary;
-  text-align: right;
-}
-
-.login-page__demo-disabled {
-  margin-left: $space-xs;
-  color: $danger-color;
-}
-
-.login-page__demo-note {
-  margin: $space-sm 0 0;
-  font-size: $font-size-xs;
-  line-height: 1.6;
-  color: $text-secondary;
 }
 </style>

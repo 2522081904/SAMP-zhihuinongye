@@ -115,14 +115,17 @@ export function normalizeConfig(config) {
 
 /**
  * 按注册表分发请求；所有异常统一转为 50001 信封，保证页面不会白屏。
+ * 之所以是 async：登录（A01）、改密（A27）、重置密码都要求 PBKDF2 校验/派生，
+ * 而 Web Crypto（`crypto.subtle`）只有异步 API。这里统一用 await 分发，
+ * 同步 handler 返回普通信封，await 到的是它本身，行为不变。
  * @param {Object} config axios 请求配置
- * @returns {Object} 统一响应信封
+ * @returns {Promise<Object>} 统一响应信封
  */
-export function handleMockRequest(config) {
+export async function handleMockRequest(config) {
   const ctx = normalizeConfig(config)
   try {
     for (const handler of MODULE_HANDLERS) {
-      const result = handler(ctx)
+      const result = await handler(ctx)
       if (result) {
         return result
       }
@@ -141,7 +144,7 @@ export function handleMockRequest(config) {
 export async function mockAdapter(config) {
   const delay = Math.round(120 + Math.random() * 280)
   await sleep(delay)
-  const envelope = handleMockRequest(config)
+  const envelope = await handleMockRequest(config)
   return {
     data: envelope,
     status: 200,

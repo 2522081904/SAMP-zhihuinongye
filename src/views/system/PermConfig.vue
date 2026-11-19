@@ -372,7 +372,7 @@ const API_SAMPLES = {
     }
   },
   A25: {
-    request: { username: 'cdp_user_01', name: '演示用户', phone: '13800000009', roleCode: 'OPS' },
+    request: { username: 'cdp_user_01', name: '示例用户', phone: '13800000009', roleCode: 'OPS' },
     response: {
       code: 0,
       message: 'success',
@@ -381,13 +381,13 @@ const API_SAMPLES = {
     }
   },
   A26: {
-    request: { appName: '演示开放平台应用', contact: '张三', purpose: '溯源数据查询' },
+    request: { appName: '示例开放平台应用', contact: '张三', purpose: '溯源数据查询' },
     response: {
       code: 0,
       message: 'success',
       data: {
         appId: 'APP-2026-0004',
-        appName: '演示开放平台应用',
+        appName: '示例开放平台应用',
         appSecret: 'sec_agri_9f2c4e6a8b0d1f3c',
         status: 'ENABLED'
       },
@@ -981,7 +981,7 @@ async function submitCreateApp() {
 /** 重置密钥：A26 没有该接口，只改本地补充记录中的 AppSecret */
 function resetAppSecret(row) {
   ElMessageBox.confirm(
-    `确认重置应用「${row.appName}」的接入密钥？旧密钥将立即失效（本地演示记录）。`,
+    `确认重置应用「${row.appName}」的接入密钥？旧密钥将立即失效（本地记录）。`,
     '重置密钥',
     { type: 'warning', confirmButtonText: '确认重置', cancelButtonText: '取消' }
   )
@@ -1022,7 +1022,7 @@ function toggleAppStatus(row) {
       }
       if (writeJson(OPEN_APP_META_KEY, next)) {
         openMeta.value = next
-        ElMessage.success(`应用「${row.appName}」已${actionText}（本地演示记录）`)
+        ElMessage.success(`应用「${row.appName}」已${actionText}（本地记录）`)
       }
     })
     .catch(() => {
@@ -1070,7 +1070,7 @@ onMounted(() => {
     </el-row>
     <p class="perm-config__note text-secondary">
       说明：权限编码与按钮权限为前端常量（A02
-      仅返回菜单）；接口对接状态、最近调用时间为演示数据；开放平台的 AppKey 与启停状态因 A26
+      仅返回菜单）；接口对接状态、最近调用时间为示例数据；开放平台的 AppKey 与启停状态因 A26
       缺字段，写浏览器本地补充记录。
     </p>
 
@@ -1145,7 +1145,7 @@ onMounted(() => {
                 共 {{ filteredApis.length }} 个接口，覆盖 A01–A26
               </span>
             </div>
-            <span class="perm-config__sub text-secondary">请求/响应示例为演示数据</span>
+            <span class="perm-config__sub text-secondary">请求/响应为示例数据</span>
           </div>
 
           <AgriTable
@@ -1328,7 +1328,7 @@ onMounted(() => {
         </el-form-item>
       </el-form>
       <p class="perm-config__dialog-tip text-secondary">
-        保存后由前端生成演示 AppKey（app_ + 16 位十六进制），A26 返回的 appId 仍作为应用主键。
+        保存后由前端生成 AppKey（app_ + 16 位十六进制），A26 返回的 appId 仍作为应用主键。
       </p>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>

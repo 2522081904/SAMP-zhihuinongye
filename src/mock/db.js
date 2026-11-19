@@ -1102,6 +1102,66 @@ export const roles = [
   }
 ]
 
+// 种子账号的初始密码：与 src/views/system/UserList.vue 的 DEFAULT_PASSWORD 一致，
+// 保证「管理员重置密码后用户真能用这个密码登录」
+const SEED_PASSWORD = 'Agri@2026'
+
+// 预生成的密码哈希常量。
+// 为什么写死而不是运行时计算：db.js 顶层是同步模块，而 Web Crypto 的 PBKDF2 只有异步 API，
+// 把 db.js 改成异步模块会引发大面积连锁改动（见 _check/TASK-1-PASSWORD-SPEC.md 第 3 节）。
+// 重新生成：node scripts/gen-password-seeds.mjs（改初始密码后跑一次，粘贴输出覆盖本常量）。
+// 每条盐值不同，算法与参数见 src/mock/password.js。
+const PASSWORD_HASHES = {
+  admin: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: 'CaSTsk7FJyVP+8Nj6IhBsA==',
+    hash: 'DL7lvBHslb7BYajElE8JbcnjEiSam6ymJdjQilQp0po='
+  },
+  ops01: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: '4udYzKpNYECb0EsbHRnzjg==',
+    hash: 'EPbLzfgJIiv7UlpxaabSq0oH5M4amYTdO4B0rApQB/U='
+  },
+  ops02: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: 'uEuc7LEZuAs6Hkq8GgbpDg==',
+    hash: 'SYoTpKkqHoF2tCSLGMdaYLGe9ByJnaor3J6/JIwZOKg='
+  },
+  farmer01: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: '75q4X2rDXmZfqE5z+5ezcA==',
+    hash: 'FGkoH2gp0eOGfYIdQt1aGWYW3qgBnqfiR8e6vkca3s0='
+  },
+  farmer02: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: 'nxrwYZazbMgcOa4N51GA+Q==',
+    hash: 'ik75/1XkjPsPzqz1SGHla567XNsmRJqx0Pu3vD160uk='
+  },
+  farmer03: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: 'Rz9q+9RyfttADCvVlsztyA==',
+    hash: 'OFhK6Cb2EQhlF65rnG5PYbzr489w0Yx5zVxkivfR2co='
+  },
+  supervisor01: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: 'jwuwBciBt8ba80FRz9WwUA==',
+    hash: 'sKqBK4eoG6NVasj8ZWfITUolgvGtRwDaJNcevAtD3UU='
+  },
+  supervisor02: {
+    algo: 'PBKDF2-SHA256',
+    iterations: 600000,
+    salt: 'WndFAlBM7Wwp8IOzW2Fnvg==',
+    hash: 'gPjX+yYllhhdqL8SljPqK/jPkep+WhjX2adM21EckY0='
+  }
+}
+
 // 用户种子：[账号, 姓名, 角色码, 手机号, 负责地块]
 const USER_SEEDS = [
   ['admin', '系统管理员', 'ADMIN', '13800000001', []],
@@ -1116,6 +1176,8 @@ const USER_SEEDS = [
 
 /**
  * 用户列表：8 个账号覆盖 4 个角色（A25），perms 由角色带出。
+ * 每个用户带 `passwordHash`（PBKDF2 哈希，绝不存明文），登录时用 src/mock/password.js 校验。
+ * 注意：passwordHash 只允许 db 层与 handler 内部使用，任何对外结构都必须经过 userPublic 白名单。
  */
 export const users = USER_SEEDS.map((seed, index) => {
   const [username, name, roleCode, phone, plotIds] = seed
@@ -1130,12 +1192,40 @@ export const users = USER_SEEDS.map((seed, index) => {
     roleName: role?.name || '',
     perms: [...(role?.perms || [])],
     plotIds,
+    // 复制一份，避免多个用户共享同一对象引用而被就地改写
+    passwordHash: { ...PASSWORD_HASHES[username] },
     status: index === 7 ? 'DISABLED' : 'ENABLED',
     statusName: index === 7 ? '已停用' : '正常',
     lastLoginAt: formatDateTime(NOW_MS - (index * 3 + 1) * HOUR_MS),
     createdAt: formatDateTime(NOW_MS - (60 + index * 15) * DAY_MS)
   }
 })
+
+/**
+ * 写回密码哈希（自助改密 A27 / 管理员重置密码）。
+ * @param {string|number} username 账号或用户 id
+ * @param {{algo: string, iterations: number, salt: string, hash: string}} passwordHash 哈希结构
+ * @returns {boolean} 是否写入成功（账号不存在时返回 false）
+ */
+export function updatePasswordHash(username, passwordHash) {
+  const target = users.find(
+    (item) =>
+      item.username === String(username ?? '').trim() || String(item.id) === String(username)
+  )
+  if (!target) {
+    return false
+  }
+  target.passwordHash = { ...passwordHash }
+  return true
+}
+
+/**
+ * 读取账号的初始密码（仅供新建用户 / 重置密码使用，不要用于任何校验路径）。
+ * @returns {string} 初始密码明文
+ */
+export function seedPassword() {
+  return SEED_PASSWORD
+}
 
 const MENU_GROUPS = [
   {

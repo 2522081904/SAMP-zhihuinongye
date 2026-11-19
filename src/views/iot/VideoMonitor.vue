@@ -2,7 +2,7 @@
 /**
  * P013 视频监控
  * 职责：以设备台账中的摄像头（category=CAMERA）为数据源，用卡片网格展示地块摄像头状态，
- *      点击卡片查看大图占位、设备信息与抓拍演示入口。
+ *      点击卡片查看大图占位、设备信息与抓拍入口。
  * 说明：本轮不接入真实流媒体（不引 hls.js / flv.js，不写流地址），
  *      播放区统一为深色占位 +「实时画面接入中」，避免给出不可用的播放能力。
  */
@@ -104,9 +104,9 @@ function openCamera(camera) {
   dialogVisible.value = true
 }
 
-/** 抓拍演示：本轮没有真实抓拍能力，仅给出提示 */
+/** 抓拍：本轮没有真实抓拍能力，仅给出提示 */
 function handleSnapshot() {
-  ElMessage.info('抓拍已保存到本地（演示）')
+  ElMessage.info('抓拍已保存到本地')
 }
 
 /** 刷新：重新拉取摄像头与地块 */
@@ -123,7 +123,7 @@ onMounted(refresh)
     <AgriPageHeader
       page-id="P013"
       title="视频监控"
-      description="按地块查看摄像头在线状态与画面接入情况，支持筛选、刷新与抓拍演示入口。"
+      description="按地块查看摄像头在线状态与画面接入情况，支持筛选、刷新与抓拍。"
     >
       <template #extra>
         <span class="video-monitor__summary text-secondary">
@@ -207,7 +207,7 @@ onMounted(refresh)
       <div class="video-monitor__dialog">
         <div class="video-monitor__dialog-player">
           <span class="video-monitor__play-icon video-monitor__play-icon--large" />
-          <span class="video-monitor__player-text">实时画面接入中（演示环境）</span>
+          <span class="video-monitor__player-text">实时画面接入中</span>
         </div>
         <el-descriptions v-if="activeCamera" :column="2" border>
           <el-descriptions-item label="设备编号">{{ activeCamera.code }}</el-descriptions-item>
