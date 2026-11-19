@@ -1,10 +1,15 @@
 /**
  * 应用入口
  * 职责：创建 Vue 应用，挂载 Pinia、Router、全局指令与全局样式。
- * Element Plus 组件与样式由 unplugin-vue-components 按需注入，入口不整包引入。
+ * Element Plus 组件与样式由 unplugin-vue-components 按需注入，入口不整包引入；
+ * 但命令式调用（ElMessageBox / ElMessage 等）不在模板里，按需注入覆盖不到，
+ * 需在 ./styles/element-plus-command-styles.js 里显式补样式。
  * 按 VITE_USE_MOCK 开关动态装载本地假数据层；静态演示站生产构建同样启用 mock，不依赖真实后端。
  */
 import { createApp } from 'vue'
+
+// 命令式组件样式必须早于任何页面渲染：放在业务模块之前导入
+import '@/styles/element-plus-command-styles'
 
 import App from './App.vue'
 import router from './router'
