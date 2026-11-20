@@ -10,8 +10,8 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
+import { clearSession, readSession } from '@/utils/session.js'
 
-const TOKEN_KEY = 'agri_token'
 // 部署基路径（GitHub Pages 项目站点为 /<repo>/，本地为 /），整页硬跳转必须带上它
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -36,7 +36,7 @@ const service = axios.create({
 // 请求拦截：注入 token 与请求标识
 service.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(TOKEN_KEY)
+    const token = readSession()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -62,7 +62,7 @@ service.interceptors.response.use(
     bizError.requestId = body.requestId
 
     if (body.code === 40101) {
-      localStorage.removeItem(TOKEN_KEY)
+      clearSession()
       ElMessage.error('登录已失效，请重新登录')
       redirectToLogin()
       return Promise.reject(bizError)
@@ -77,7 +77,7 @@ service.interceptors.response.use(
     const status = error.response?.status
     let message = error.message || '网络异常'
     if (status === 401) {
-      localStorage.removeItem(TOKEN_KEY)
+      clearSession()
       message = '未登录或登录已过期'
       redirectToLogin()
     } else if (status === 403) {
@@ -95,4 +95,4 @@ service.interceptors.response.use(
 )
 
 export default service
-export { TOKEN_KEY }
+export { TOKEN_KEY } from '@/utils/session.js'

@@ -7,12 +7,17 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { fetchCurrentUser, login as loginApi } from '@/api'
-
-const TOKEN_KEY = 'agri_token'
+import { readSessionState, saveSession } from '@/utils/session.js'
 
 export const useUserStore = defineStore('user', () => {
-  // 令牌持久化在 localStorage，刷新页面不丢登录态
-  const token = ref(localStorage.getItem(TOKEN_KEY) || '')
+  // 令牌持久化在 localStorage，刷新页面不丢登录态。
+  // 一次性读取：readSessionState 会在返回前丢弃已过期的令牌，并把「是否因过期被清」一并告知，
+  // 后续再读 hasStaleSession 已经看不到残留（已被清理），所以必须在这里就拿到结论。
+  const initialSession = readSessionState()
+  const token = ref(initialSession.token)
+  // 本次进入页面时登录态是否已过期：登录页据此提示「登录已过期，请重新登录」，
+  // 否则用户只会看到莫名跳回登录页，不知道发生了什么
+  const sessionExpired = ref(initialSession.expired)
   // A02 档案：{ id, username, name, role, roleCode, roleName, permissions, plotIds }
   const profile = ref(null)
   // A02 返回的菜单树，预留给动态菜单（当前路由表是静态注册的）
@@ -55,13 +60,15 @@ export const useUserStore = defineStore('user', () => {
     return owned.includes('*') || owned.includes(code)
   }
 
-  function setToken(value) {
+  /**
+   * 写入 / 清除登录令牌。
+   * 有效期与令牌一起写：登录接口 A01 会返回 expiresIn，缺省按 2 小时。
+   * @param {string} value 令牌；传空表示退出登录
+   * @param {number} [expiresIn] 有效期（秒）
+   */
+  function setToken(value, expiresIn) {
     token.value = value || ''
-    if (value) {
-      localStorage.setItem(TOKEN_KEY, value)
-    } else {
-      localStorage.removeItem(TOKEN_KEY)
-    }
+    saveSession(token.value, expiresIn)
   }
 
   /**
@@ -111,7 +118,9 @@ export const useUserStore = defineStore('user', () => {
     if (!nextToken) {
       throw new Error('登录失败：接口未返回令牌')
     }
-    setToken(nextToken)
+    setToken(nextToken, data?.expiresIn)
+    // 已重新登录，过期提示随之处置，避免下次进登录页再弹一次
+    sessionExpired.value = false
     profile.value = normalizeProfile(data?.userInfo)
     return true
   }
@@ -176,6 +185,7 @@ export const useUserStore = defineStore('user', () => {
     userInfo,
     menus,
     profileLoading,
+    sessionExpired,
     isLogin,
     userName,
     roleName,

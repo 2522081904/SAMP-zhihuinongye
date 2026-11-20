@@ -221,6 +221,10 @@ async function handleLogin() {
 
 onMounted(() => {
   refreshCaptcha(false)
+  // 登录态过期被守卫送回登录页时给一句解释，否则用户只看到莫名跳转
+  if (userStore.sessionExpired) {
+    ElMessage.warning('登录已过期，请重新登录')
+  }
 })
 
 onBeforeUnmount(() => {
