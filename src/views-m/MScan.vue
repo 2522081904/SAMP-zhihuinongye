@@ -190,7 +190,7 @@ function retryQuery() {
       </div>
 
       <el-button type="primary" class="scan-btn" :loading="scanning" @click="simulateScan">
-        模拟扫码
+        示例扫码
       </el-button>
 
       <div class="scan-input">
@@ -360,7 +360,7 @@ function retryQuery() {
     </div>
 
     <div v-else class="trace-card state-card">
-      <AgriEmpty description="输入溯源码或模拟扫码开始查询" height="150px" />
+      <AgriEmpty description="输入溯源码开始查询" height="150px" />
     </div>
   </div>
 </template>

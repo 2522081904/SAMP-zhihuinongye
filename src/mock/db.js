@@ -1105,6 +1105,9 @@ export const roles = [
 // 种子账号的初始密码：与 src/views/system/UserList.vue 的 DEFAULT_PASSWORD 一致，
 // 保证「管理员重置密码后用户真能用这个密码登录」
 const SEED_PASSWORD = 'Agri@2026'
+// 管理员是演示主账号，口令单独设得好记一些；重置 admin 密码时也用这个值，
+// 否则重置一次就和登录页/文档上写的口令对不上了。
+const ADMIN_SEED_PASSWORD = 'admin123'
 
 // 预生成的密码哈希常量。
 // 为什么写死而不是运行时计算：db.js 顶层是同步模块，而 Web Crypto 的 PBKDF2 只有异步 API，
@@ -1115,8 +1118,10 @@ const PASSWORD_HASHES = {
   admin: {
     algo: 'PBKDF2-SHA256',
     iterations: 600000,
-    salt: 'CaSTsk7FJyVP+8Nj6IhBsA==',
-    hash: 'DL7lvBHslb7BYajElE8JbcnjEiSam6ymJdjQilQp0po='
+    // 管理员初始密码单独设为 admin123（其余账号仍为 Agri@2026）：
+    // 管理员是演示主账号，需要一个好记的口令；其余角色保持强密码策略。
+    salt: 'EK79/QKHf0xFNmeimThgaw==',
+    hash: 'YTyffvTNYNG9skS2/yAQScHc7evQXG0bK/Bi6GhVsnU='
   },
   ops01: {
     algo: 'PBKDF2-SHA256',
@@ -1221,9 +1226,14 @@ export function updatePasswordHash(username, passwordHash) {
 
 /**
  * 读取账号的初始密码（仅供新建用户 / 重置密码使用，不要用于任何校验路径）。
+ * 管理员单独用 admin123（演示主账号，口令好记），其余账号统一强密码。
+ * @param {string} [username] 账号名；不传时返回通用初始密码（新建用户场景）
  * @returns {string} 初始密码明文
  */
-export function seedPassword() {
+export function seedPassword(username) {
+  if (username === 'admin') {
+    return ADMIN_SEED_PASSWORD
+  }
   return SEED_PASSWORD
 }
 

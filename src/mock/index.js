@@ -4,6 +4,7 @@
  * 若构建时 VITE_USE_MOCK=false，该模块通过动态 import 不会进入主包。
  */
 import { mockAdapter } from './adapter.js'
+import { hydrateRuntime } from './persist.js'
 
 /**
  * 读取 mock 开关；兼容 Node 环境（无 import.meta.env）。
@@ -28,6 +29,8 @@ export function installMock(axiosInstance, env) {
   if (!enabled || !axiosInstance || !axiosInstance.defaults) {
     return false
   }
+  // 必须在装 adapter 之前 hydrate：否则首帧请求可能读到未恢复的权限
+  hydrateRuntime()
   axiosInstance.defaults.adapter = mockAdapter
   // 便于在控制台确认 mock 已生效
   console.info('[mock] 已启用本地假数据，接口请求不会发出网络')

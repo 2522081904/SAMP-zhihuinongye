@@ -12,6 +12,7 @@ import { useUserStore } from '@/store/modules/user'
 import { useAlertStore } from '@/store/modules/alert'
 import { pcRoutes } from '@/router'
 import buildMenuGroups from '@/router/menu'
+import AgriMobileEntry from '@/components/AgriMobileEntry.vue'
 
 defineOptions({ name: 'DefaultLayout' })
 
@@ -45,6 +46,8 @@ const keyword = ref('')
 const NARROW_QUERY = '(max-width: 768px)'
 const isNarrow = ref(false)
 const drawerOpen = ref(false)
+// 移动端入口弹窗显隐（二维码 + 移动端页面链接）
+const mobileEntryOpen = ref(false)
 let mediaQuery = null
 
 /** 折叠按钮文案：窄屏是「菜单」（开抽屉），宽屏是「收起/展开」侧栏 */
@@ -224,6 +227,9 @@ watch(
             clearable
             @keyup.enter="handleKeywordSearch"
           />
+          <el-button text class="layout__mobile-entry" @click="mobileEntryOpen = true">
+            移动端
+          </el-button>
           <el-badge :value="alertStore.pendingCount" :hidden="alertStore.pendingCount === 0">
             <el-button text @click="router.push('/iot/alerts')">告警</el-button>
           </el-badge>
@@ -258,6 +264,9 @@ watch(
         </router-view>
       </el-main>
     </el-container>
+
+    <!-- 移动端入口弹窗：teleport 到 body，放在容器末尾不影响布局 -->
+    <AgriMobileEntry v-model="mobileEntryOpen" />
   </el-container>
 </template>
 
@@ -358,6 +367,11 @@ watch(
 
 .layout__search {
   width: 220px;
+}
+
+// 与「告警」等顶栏文字按钮一致，窄屏也不许被挤压
+.layout__mobile-entry {
+  flex-shrink: 0;
 }
 
 .layout__user {

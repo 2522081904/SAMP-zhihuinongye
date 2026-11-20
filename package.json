@@ -18,6 +18,7 @@
     "echarts": "^6.1.0",
     "element-plus": "^2.14.8",
     "pinia": "^2.3.1",
+    "qrcode-generator": "^2.0.4",
     "vue": "^3.5.45",
     "vue-router": "^4.6.5"
   },

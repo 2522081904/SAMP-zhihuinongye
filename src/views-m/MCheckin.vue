@@ -388,7 +388,7 @@ onBeforeUnmount(() => {
             <el-button plain class="photo-actions__btn" @click="addSamplePhoto">
               使用示例照片
             </el-button>
-            <span class="photo-actions__tip">模拟上传，不会真正提交文件</span>
+            <span class="photo-actions__tip">示例图片，不会真正提交文件</span>
           </div>
         </div>
       </el-form-item>

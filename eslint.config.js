@@ -15,8 +15,8 @@ export default [
     name: 'app/files-to-ignore',
     ignores: [
       '**/dist/**',
-      '**/dist-t*/**',
-      '**/dist-review/**',
+      // 并行子任务的隔离构建产物：dist-t1 … dist-tN、dist-review、dist-final 等
+      '**/dist-*/**',
       '**/node_modules/**',
       '**/coverage/**',
       '**/_check/**',

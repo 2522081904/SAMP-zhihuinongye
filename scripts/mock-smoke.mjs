@@ -25,6 +25,7 @@ import {
   users,
   workOrders
 } from '../src/mock/db.js'
+import { isPersistAvailable, persistRolePerms } from '../src/mock/persist.js'
 import { createRequestId } from '../src/api/request-id.js'
 
 let TOKEN = ''
@@ -167,7 +168,7 @@ TOKEN = ''
 const loginEnvelope = await call({
   method: 'POST',
   path: '/auth/login',
-  body: { username: 'admin', password: 'Agri@2026' },
+  body: { username: 'admin', password: 'admin123' },
   token: ''
 })
 record({ id: 'A01', method: 'POST', path: '/auth/login', envelope: loginEnvelope })
@@ -608,6 +609,85 @@ recordExtra(
   })
 )
 assert(users.length >= 8, 'A25 用户种子数据应不少于 8 个')
+
+// ---------- A25 补充：角色权限保存后立即生效（TASK-4 新增，防止「存了不生效」回归） ----------
+// 关键点：db.js 构造 users 时 perms 是拷贝，接口必须同时改 roles 与 users，
+// 否则角色页面显示已改、账号登录进去还是老权限。
+const opsRole = roles.find((role) => role.code === 'OPS')
+const opsPermsBefore = [...opsRole.perms]
+const opsLogin = await call({
+  method: 'POST',
+  path: '/auth/login',
+  body: { username: 'ops01', password: 'Agri@2026' },
+  token: ''
+})
+const opsToken = opsLogin.data?.token || ''
+assert(Boolean(opsToken), 'A25 角色权限用例：ops01 登录未返回 token')
+const opsMeBefore = await call({ path: '/auth/me', token: opsToken })
+assert(
+  (opsMeBefore.data?.permissions || []).includes('iot:control'),
+  'A25 角色权限用例前置：OPS 初始权限应包含 iot:control'
+)
+const opsPermsWithoutControl = opsPermsBefore.filter((code) => code !== 'iot:control')
+recordExtra(
+  'A25 保存角色权限（去掉 iot:control）',
+  await call({
+    method: 'POST',
+    path: '/system/roles',
+    body: { id: opsRole.id, code: opsRole.code, perms: opsPermsWithoutControl }
+  })
+)
+const opsMeAfter = await call({ path: '/auth/me', token: opsToken })
+recordExtra('A25 保存后立即生效（ops01 /auth/me）', opsMeAfter)
+const opsPermsAfter = opsMeAfter.data?.permissions || []
+assert(
+  !opsPermsAfter.includes('iot:control'),
+  `A25 角色权限保存后 ops01 的 permissions 不应再含 iot:control，实际 ${JSON.stringify(opsPermsAfter)}`
+)
+assert(
+  opsPermsAfter.length === opsPermsWithoutControl.length,
+  `A25 角色权限保存后 ops01 权限条数应为 ${opsPermsWithoutControl.length}，实际 ${opsPermsAfter.length}`
+)
+// 还原现场：后续用例与本地联调都依赖 OPS 的种子权限
+recordExtra(
+  'A25 角色权限还原',
+  await call({
+    method: 'POST',
+    path: '/system/roles',
+    body: { id: opsRole.id, code: opsRole.code, perms: opsPermsBefore }
+  })
+)
+const opsMeRestored = await call({ path: '/auth/me', token: opsToken })
+assert(
+  (opsMeRestored.data?.permissions || []).includes('iot:control'),
+  'A25 角色权限还原后 ops01 应重新拿到 iot:control'
+)
+
+// ---------- A25 补充：Node 下持久化必须是安全空操作（TASK-4 新增） ----------
+// 这条锁死「不能在 Node 路径上炸」：persist.js 会被 scripts/mock-smoke.mjs import，
+// 但 Node 没有 localStorage，两个函数都必须静默降级而不是抛异常。
+const persistAvailable = isPersistAvailable()
+assert(
+  persistAvailable === false,
+  `A25 Node 环境 isPersistAvailable() 应为 false，实际 ${persistAvailable}`
+)
+let persistThrew = false
+let persistResult = null
+try {
+  persistResult = persistRolePerms(opsRole)
+} catch (error) {
+  persistThrew = true
+  fail(`A25 persistRolePerms() 在 Node 下不应抛异常，实际抛出：${error.message}`)
+}
+assert(
+  persistThrew || persistResult === false,
+  `A25 Node 下 persistRolePerms() 应返回 false，实际 ${persistResult}`
+)
+extras.push({
+  label: 'A25 Node 下持久化安全空操作',
+  code: persistThrew ? 'THROW' : `已降级=${persistResult}`,
+  passed: !persistThrew && persistResult === false
+})
 
 // ---------- A26 开放平台 ----------
 const appList = await call({ path: '/open/apps', params: { page: 1, size: 10 } })

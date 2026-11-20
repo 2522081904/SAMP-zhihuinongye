@@ -290,7 +290,7 @@ const API_LIST = [
 // 关键接口的请求/响应示例；其余接口按 GET/POST 生成通用示例
 const API_SAMPLES = {
   A01: {
-    request: { username: 'admin', password: 'Agri@2026' },
+    request: { username: 'admin', password: 'admin123' },
     response: {
       code: 0,
       message: 'success',

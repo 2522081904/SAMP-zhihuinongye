@@ -33,9 +33,10 @@ const loading = ref(false)
 const captchaText = ref('')
 const captchaCanvas = ref(null)
 
+// 表单不预填账号密码：登录页是成品，不能让任何人打开就看到一组可用凭据
 const form = reactive({
-  username: 'admin',
-  password: 'admin123',
+  username: '',
+  password: '',
   captcha: ''
 })
 

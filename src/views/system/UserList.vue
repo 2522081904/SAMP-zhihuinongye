@@ -12,8 +12,8 @@
  * - A25 角色种子只有管理员/运维/农户/监管 4 个，需求要求的「消费者」为前端内置角色，
  *   后端无此角色，因此不参与账号分配，只用于权限配置演示；
  * - A25 没有重置密码接口：重置操作只做二次确认与结果提示，不修改后端数据；
- * - A25 的 POST /system/roles 虽可更新 perms，但 mock 数据刷新页面即复位，权限勾选按本轮要求
- *   落 localStorage（agri-role-perms-v1），接入真实后端后可改为保存到 saveRole；
+ * - 角色权限保存走 A25 的 POST /system/roles，接口返回后立即刷新当前登录者的菜单；
+ *   mock 层会把角色权限落到 localStorage（agri-mock-roles-v1），刷新页面后仍生效；
  * - A02 菜单只提供菜单级节点，按钮级权限码在前端常量中维护（与 P030 权限清单同口径）；
  * - 账号模型只支持单角色（roleCode），新增表单按需求提供多选，保存时取第一个作为主角色并提示。
  * 时间口径：mock 业务时间固定为 2026-11-16 18:30:00，禁止用 Date.now 参与业务判断。
@@ -21,7 +21,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-import { createUser, fetchPlots, fetchRoles, fetchUsers, updateUser } from '@/api'
+import { createUser, fetchPlots, fetchRoles, fetchUsers, saveRole, updateUser } from '@/api'
 import AgriFormDialog from '@/components/AgriFormDialog.vue'
 import AgriPageHeader from '@/components/AgriPageHeader.vue'
 import AgriSearchBar from '@/components/AgriSearchBar.vue'
@@ -38,8 +38,7 @@ const BUSINESS_NOW_TEXT = '2026-11-16 18:30:00'
 const BUSINESS_MONTH = BUSINESS_NOW_TEXT.slice(0, 7)
 // 初始密码：A25 没有单独的重置密码接口，只作为统一口径文案
 const DEFAULT_PASSWORD = 'Agri@2026'
-// 权限勾选与本地新增用户记录（无后端写接口，见文件头说明）
-const ROLE_PERM_STORAGE_KEY = 'agri-role-perms-v1'
+// 本地新增用户记录（A25 不返回 createdAt，见文件头说明）
 const CREATED_USER_STORAGE_KEY = 'agri-user-created-v1'
 
 const USER_STATUS_MAP = {
@@ -77,7 +76,12 @@ const BUILTIN_CONSUMER_ROLE = {
 }
 
 const userStore = useUserStore()
-const treeProps = { children: 'children', label: 'label' }
+// disabled 用函数形式，这样 ADMIN 保护态切换时不用重建树数据（重建会重置勾选状态）
+const treeProps = {
+  children: 'children',
+  label: 'label',
+  disabled: () => isAdminRole.value
+}
 
 const activeTab = ref('users')
 const loading = ref(false)
@@ -105,7 +109,7 @@ const editRow = ref(null)
 const roleTreeRef = ref(null)
 const activeRoleCode = ref('')
 const checkedCount = ref(0)
-const permOverrides = ref(readJson(ROLE_PERM_STORAGE_KEY, {}))
+const saving = ref(false)
 const createdUsers = ref(readJson(CREATED_USER_STORAGE_KEY, {}))
 
 /** 读取 localStorage 的 JSON 对象，失败时回落到默认值 */
@@ -204,6 +208,9 @@ const assignableRoles = computed(() => roles.value.filter((role) => !role.builti
 const activeRole = computed(
   () => roles.value.find((role) => role.code === activeRoleCode.value) || null
 )
+// 超级管理员的 perms 是通配 ['*']，一旦被显式勾选覆盖，以后新增页面超管反而看不见。
+// 从 UI 上直接禁止编辑，比在接口里猜「用户是不是全勾了」更诚实。
+const isAdminRole = computed(() => activeRole.value?.code === 'ADMIN')
 const roleTreeData = computed(() => buildPermissionTree(menuGroups.value))
 
 // 权限码 → 权限树节点 key，勾选回显时按 key 定位叶子
@@ -415,9 +422,6 @@ const editData = computed(() => {
 
 /** 展开角色权限码：兼容种子角色的老口径聚合码 */
 function expandRolePerms(role) {
-  if (Array.isArray(permOverrides.value[role.code])) {
-    return permOverrides.value[role.code]
-  }
   const perms = role.perms || []
   if (perms.includes('*')) {
     return Object.keys(leafKeyByCode.value)
@@ -456,23 +460,29 @@ async function syncRoleTree() {
   await updateCheckedCount()
 }
 
-/** 保存权限：只写 localStorage，理由见文件头数据缺口说明 */
-function saveRolePerms() {
+/** 保存权限：调 A25 接口写后端（mock 层会落 localStorage），成功后刷新当前登录者菜单 */
+async function saveRolePerms() {
   const role = activeRole.value
   const tree = roleTreeRef.value
-  if (!role || !tree) {
+  if (!role || !tree || isAdminRole.value) {
     return
   }
   const codes = tree
     .getCheckedNodes(true)
     .map((node) => node.code)
     .filter(Boolean)
-  const next = { ...permOverrides.value, [role.code]: codes }
-  if (!writeJson(ROLE_PERM_STORAGE_KEY, next)) {
+  saving.value = true
+  try {
+    await saveRole({ id: role.id, perms: codes })
+  } catch {
+    // request.js 的响应拦截器已经统一弹过错误提示，这里不要再弹一次
     return
+  } finally {
+    saving.value = false
   }
-  permOverrides.value = next
   ElMessage.success(`「${role.name}」权限已保存，共 ${codes.length} 项`)
+  // 管理员可能改到自己所属角色的权限，强制刷新当前登录者的菜单，免得还要手动 F5
+  await userStore.fetchProfile({ force: true })
 }
 
 /** 记录本地新增用户，用于「本月新增」统计（A25 不返回 createdAt） */
@@ -823,13 +833,27 @@ onMounted(loadAll)
                 <div>
                   <h3 class="user-list__title">{{ activeRole?.name || '角色权限' }}</h3>
                   <span class="user-list__sub text-secondary">
-                    已勾选 {{ checkedCount }} 项；保存后写入浏览器本地（agri-role-perms-v1）
+                    已勾选 {{ checkedCount }} 项；保存后立即生效，并对该角色下所有账号适用
                   </span>
                 </div>
-                <el-button type="primary" :disabled="!activeRole" @click="saveRolePerms">
+                <el-button
+                  type="primary"
+                  :disabled="!activeRole || isAdminRole"
+                  :loading="saving"
+                  @click="saveRolePerms"
+                >
                   保存权限
                 </el-button>
               </div>
+
+              <el-alert
+                v-if="isAdminRole"
+                type="info"
+                :closable="false"
+                show-icon
+                class="role-perm__notice"
+                title="超级管理员固定拥有全部权限，不可编辑"
+              />
 
               <p v-if="!roleTreeData.length" class="text-secondary">
                 A02 未返回菜单数据，暂时无法展示权限树，请稍后重试。
@@ -1065,6 +1089,10 @@ onMounted(loadAll)
   align-items: flex-start;
   justify-content: space-between;
   gap: $space-sm;
+  margin-bottom: $space-sm;
+}
+
+.role-perm__notice {
   margin-bottom: $space-sm;
 }
 

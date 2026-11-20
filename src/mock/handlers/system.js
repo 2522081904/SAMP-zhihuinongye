@@ -15,6 +15,7 @@ import {
   users
 } from '../db.js'
 import { buildPasswordHash } from '../password.js'
+import { persistRolePerms } from '../persist.js'
 import {
   fail,
   formatDateTime,
@@ -120,7 +121,8 @@ export async function handleSystem(ctx) {
     if (!target) {
       return fail(40401, `用户 ${resetPath.id} 不存在`)
     }
-    const initialPassword = seedPassword()
+    // 按目标账号取初始密码：admin 用 admin123，其余用统一强密码
+    const initialPassword = seedPassword(target.username)
     updatePasswordHash(target.username, await buildPasswordHash(initialPassword))
     return ok(null, `密码已重置为 ${initialPassword}`)
   }
@@ -207,6 +209,8 @@ export async function handleSystem(ctx) {
             item.roleName = role.name
           })
       }
+      // 落盘是尽力而为：失败只影响刷新后是否保留，不能让保存接口报错
+      persistRolePerms(role)
       return ok(role, '角色已更新')
     }
     const code = String(body.code || '')
